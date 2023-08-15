@@ -363,6 +363,7 @@ void *windowThread(void *param)
 
     windowTitle[0] = '\0';
     strcat(windowTitle, displayName);
+    strcat(windowTitle, "CoffeMuse Fork");    
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
 
@@ -384,15 +385,15 @@ void *windowThread(void *param)
     /*
     **  Load three Cyber fonts.
     */
-    hSmallFont  = XLoadFont(disp, "-*-lucidatypewriter-medium-*-*-*-10-*-*-*-*-*-*-*\0");
-    hMediumFont = XLoadFont(disp, "-*-lucidatypewriter-medium-*-*-*-14-*-*-*-*-*-*-*\0");
-    hLargeFont  = XLoadFont(disp, "-*-lucidatypewriter-medium-*-*-*-24-*-*-*-*-*-*-*\0");
+    hSmallFont  = XLoadFont(disp, "-*-lucidatypewriter-medium-*-*-*-14-*-*-*-*-*-*-*\0");
+    hMediumFont = XLoadFont(disp, "-*-lucidatypewriter-medium-*-*-*-20-*-*-*-*-*-*-*\0");
+    hLargeFont  = XLoadFont(disp, "-*-lucidatypewriter-medium-*-*-*-32-*-*-*-*-*-*-*\0");
 
     /*
     **  Setup fore- and back-ground colors.
     */
     XGetWindowAttributes(disp, window, &a);
-    XAllocNamedColor(disp, a.colormap, "green", &b, &c);
+    XAllocNamedColor(disp, a.colormap, "orange", &b, &c);
     fg = b.pixel;
     bg = BlackPixel(disp, screen);
     XSetBackground(disp, gc, bg);
