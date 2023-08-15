@@ -363,7 +363,7 @@ void *windowThread(void *param)
 
     windowTitle[0] = '\0';
     strcat(windowTitle, displayName);
-    strcat(windowTitle, "CoffeMuse Fork");    
+    strcat(windowTitle, " CoffeMuse Fork");    
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
 
