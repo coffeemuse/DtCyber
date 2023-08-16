@@ -65,12 +65,12 @@
 **  -----------------------------------------
 */
 typedef struct dispList
-{
+    {
     u16 xPos;                       /* horizontal position */
     u16 yPos;                       /* vertical position */
     u8  fontSize;                   /* size of font */
     u8  ch;                         /* character to be displayed */
-} DispList;
+    } DispList;
 
 /*
 **  ---------------------------
@@ -97,6 +97,8 @@ static i16             currentY;
 static u16             oldCurrentY;
 static DispList        display[ListSize];
 static u32             listEnd;
+static int             width;
+static int             height;
 static bool            refresh = FALSE;
 static pthread_mutex_t mutexDisplay;
 
@@ -118,7 +120,7 @@ static pthread_mutex_t mutexDisplay;
 **
 **------------------------------------------------------------------------*/
 void windowInit(void)
-{
+    {
     int            rc;
     pthread_t      thread;
     pthread_attr_t attr;
@@ -138,7 +140,7 @@ void windowInit(void)
     */
     pthread_attr_init(&attr);
     rc = pthread_create(&thread, &attr, windowThread, NULL);
-}
+    }
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Set font size.
@@ -151,9 +153,9 @@ void windowInit(void)
 **
 **------------------------------------------------------------------------*/
 void windowSetFont(u8 font)
-{
+    {
     currentFont = font;
-}
+    }
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Set X coordinate.
@@ -165,9 +167,9 @@ void windowSetFont(u8 font)
 **
 **------------------------------------------------------------------------*/
 void windowSetX(u16 x)
-{
+    {
     currentX = x;
-}
+    }
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Set Y coordinate.
@@ -179,7 +181,7 @@ void windowSetX(u16 x)
 **
 **------------------------------------------------------------------------*/
 void windowSetY(u16 y)
-{
+    {
     currentY = 0777 - y;
     if (oldCurrentY > currentY)
         {
@@ -187,7 +189,7 @@ void windowSetY(u16 y)
         }
 
     oldCurrentY = currentY;
-}
+    }
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Queue characters.
@@ -199,7 +201,7 @@ void windowSetY(u16 y)
 **
 **------------------------------------------------------------------------*/
 void windowQueue(u8 ch)
-{
+    {
     DispList *elem;
 
     if ((listEnd >= ListSize)
@@ -229,7 +231,7 @@ void windowQueue(u8 ch)
     **  Release display list.
     */
     pthread_mutex_unlock(&mutexDisplay);
-}
+    }
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Update window.
@@ -240,9 +242,9 @@ void windowQueue(u8 ch)
 **
 **------------------------------------------------------------------------*/
 void windowUpdate(void)
-{
+    {
     refresh = TRUE;
-}
+    }
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Poll the keyboard (dummy for X11)
@@ -253,8 +255,8 @@ void windowUpdate(void)
 **
 **------------------------------------------------------------------------*/
 void windowGetChar(void)
-{
-}
+    {
+    }
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Terminate console window.
@@ -265,12 +267,12 @@ void windowGetChar(void)
 **
 **------------------------------------------------------------------------*/
 void windowTerminate(void)
-{
+    {
     printf("Shutting down window thread\n");
     displayActive = FALSE;
     sleep(1);
     printf("Shutting down main thread\n");
-}
+    }
 
 /*
  **--------------------------------------------------------------------------
@@ -289,6 +291,66 @@ void windowTerminate(void)
 **
 **------------------------------------------------------------------------*/
 void *windowThread(void *param)
-{
-}
+    {
+
+    /*
+    ** Initialize SDL
+    */    
+	if (SDL_Init(SDL_INIT_VIDEO) != 0 ) 
+        {
+		fprintf(stderr, "Failed to initialize SDL2: %s\n", SDL_GetError());
+		exit(1);
+	    }
+
+    /*
+    ** Initialize SDL TrueType Font Support
+    */
+    TTF_Init();
+
+    /*
+    **  Load three Cyber fonts.
+    */
+	TTF_Font *hSmallFont  = TTF_OpenFont("FiraMono-Regular.ttf", 14);
+	TTF_Font *hMediumFont = TTF_OpenFont("FiraMono-Regular.ttf", 20);
+	TTF_Font *hLargeFont  = TTF_OpenFont("FiraMono-Regular.ttf", 26);
+
+    /*
+    **  Create a window.
+    */
+    width  = 1100;
+    height = 750;
+
+	SDL_Window *window = NULL;
+	SDL_Renderer *renderer = NULL;
+	SDL_CreateWindowAndRenderer(width, height, 0, &window, &renderer);
+	
+    /*
+    **  Set window and icon titles.
+    */
+    char windowTitle[132];
+    windowTitle[0] = '\0';
+    strcat(windowTitle, displayName);
+    strcat(windowTitle, "SDL Console");
+    strcat(windowTitle, " - " DtCyberVersion);
+    strcat(windowTitle, " - " DtCyberBuildDate);
+
+    SDL_SetWindowTitle(window,windowTitle);
+
+    /*
+    **  Setup fore- and back-ground colors.
+    */   
+    SDL_Color bg = {0, 0, 0, 0};
+	SDL_Color fg = {255, 255, 255, 0};
+
+
+    /*
+    **  SDL and thread cleanup
+    */
+	//SDL_DestroyTexture(tex);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	TTF_Quit();
+    SDL_Quit();
+    pthread_exit(NULL);
+    }
 /*---------------------------  End Of File  ------------------------------*/
