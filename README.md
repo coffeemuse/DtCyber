@@ -60,6 +60,10 @@ commonly used ones are:
     running a 64-bit OS (e.g., Raspberry Pi4 running 64-bit Linux) that produces
     a 64-bit executable.
 - **Makefile.macosx** A *makefile* for 64-bit, Intel-based MacOS systems.
+- **Makefile.linux64-sdl2** A *makefile* for Linux systems that produces a 64-bit
+    *DtCyber* executable with the experimental SDL2 console. See 
+    [README-SDL2.md](README-SDL2.md) for more information.
+
 
 Project (*DtCyber.vcxproj*) and solution definition (*DtCyber.sln*) files are
 provided for Microsoft Visual Studio too.

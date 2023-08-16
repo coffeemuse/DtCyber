@@ -341,3 +341,9 @@ healthchecksdb
 
 # 20220618 SJZ: Code Reformatter Backups
 **/_Attic
+
+# *.o files
+*.o
+
+# dtcyber build executab;e
+dtcyber
