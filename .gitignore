@@ -345,5 +345,5 @@ healthchecksdb
 # *.o files
 *.o
 
-# dtcyber build executab;e
+# dtcyber build executable
 dtcyber
