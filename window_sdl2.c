@@ -462,6 +462,18 @@ void *windowThread(void *param)
             }
         }
         
+        if (opPaused)
+        {
+            /*
+            **  Display pause message.
+            */
+            static char opMessage[] = "Emulation paused";
+          //  XSetFont(disp, gc, hLargeFont);
+          //  oldFont = FontLarge;
+          //  XDrawString(disp, pixmap, gc, 20, 256, opMessage, strlen(opMessage));
+        }
+
+
         // FIX ME
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, tex, NULL, &rect);
