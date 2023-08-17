@@ -30,11 +30,11 @@ SDL_LIB = -L/usr/lib -lSDL2 -lSDL2_ttf -Wl,-rpath=/usr/lib
 SDL_INCLUDE = -I/usr/include
 
 LIBS    = -lm -lpthread -lrt $(SDL_LIB)
-LDFLAGS = -s 
+LDFLAGS =  
 INCL    = $(SDL_INCLUDE)
 EXTRACFLAGS = -Wno-switch -Wno-format-security
 
-CFLAGS  = -O2 -I. $(INCL) -std=gnu99
+CFLAGS  = -O2 -I. $(INCL) -std=gnu99 -g
 
 HDRS    =   const.h                 \
             cyber_channel_linux.h   \

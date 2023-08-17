@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------------
 **
 **  Copyright (c) 2003-2011, Tom Hunter
-**  Copyright (c) 2023, CoffeeMuse 
+**  Copyright (c) 2023, CoffeeMuse
 **
 **
 **  Name: window_sdl2.c
@@ -9,7 +9,7 @@
 **  Description:
 **      Simulate CDC 6612 or CC545 console display using SDL2.
 **      This started as a port of Tom Hunter's window_X11.c
-**      
+**
 **
 **  This program is free software: you can redistribute it and/or modify
 **  it under the terms of the GNU General Public License version 3 as
@@ -26,6 +26,12 @@
 **
 **--------------------------------------------------------------------------
 */
+
+/*
+**  NOTE TO SELF - Reformat this to conform to DtCyber
+**  coding standards. 
+*/
+
 
 /*
 **  -------------
@@ -49,9 +55,9 @@
 **  Private Constants
 **  -----------------
 */
-#define ListSize           5000
-#define FrameTime          100000
-#define FramesPerSecond    (1000000 / FrameTime)
+#define ListSize 5000
+#define FrameTime 100000
+#define FramesPerSecond (1000000 / FrameTime)
 
 /*
 **  -----------------------
@@ -65,12 +71,12 @@
 **  -----------------------------------------
 */
 typedef struct dispList
-    {
-    u16 xPos;                       /* horizontal position */
-    u16 yPos;                       /* vertical position */
-    u8  fontSize;                   /* size of font */
-    u8  ch;                         /* character to be displayed */
-    } DispList;
+{
+    u16 xPos;    /* horizontal position */
+    u16 yPos;    /* vertical position */
+    u8 fontSize; /* size of font */
+    u8 ch;       /* character to be displayed */
+} DispList;
 
 /*
 **  ---------------------------
@@ -90,25 +96,26 @@ void *windowThread(void *param);
 **  Private Variables
 **  -----------------
 */
-static volatile bool   displayActive = FALSE;
-static u8              currentFont;
-static i16             currentX;
-static i16             currentY;
-static u16             oldCurrentY;
-static DispList        display[ListSize];
-static u32             listEnd;
-static int             width;
-static int             height;
-static bool            refresh = FALSE;
+static volatile bool displayActive = FALSE;
+static u8 currentFont;
+static i16 currentX;
+static i16 currentY;
+static u16 oldCurrentY;
+static DispList display[ListSize];
+static bool isMeta;
+static u32 listEnd;
+static int width;
+static int height;
+static bool refresh = FALSE;
 static pthread_mutex_t mutexDisplay;
 
 /*
- **--------------------------------------------------------------------------
- **
- **  Public Functions
- **
- **--------------------------------------------------------------------------
- */
+**--------------------------------------------------------------------------
+**
+**  Public Functions
+**
+**--------------------------------------------------------------------------
+*/
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Create POSIX thread which will deal with all X11
@@ -120,9 +127,9 @@ static pthread_mutex_t mutexDisplay;
 **
 **------------------------------------------------------------------------*/
 void windowInit(void)
-    {
-    int            rc;
-    pthread_t      thread;
+{
+    int rc;
+    pthread_t thread;
     pthread_attr_t attr;
 
     /*
@@ -140,7 +147,7 @@ void windowInit(void)
     */
     pthread_attr_init(&attr);
     rc = pthread_create(&thread, &attr, windowThread, NULL);
-    }
+}
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Set font size.
@@ -153,9 +160,9 @@ void windowInit(void)
 **
 **------------------------------------------------------------------------*/
 void windowSetFont(u8 font)
-    {
+{
     currentFont = font;
-    }
+}
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Set X coordinate.
@@ -167,9 +174,9 @@ void windowSetFont(u8 font)
 **
 **------------------------------------------------------------------------*/
 void windowSetX(u16 x)
-    {
+{
     currentX = x;
-    }
+}
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Set Y coordinate.
@@ -181,15 +188,15 @@ void windowSetX(u16 x)
 **
 **------------------------------------------------------------------------*/
 void windowSetY(u16 y)
-    {
+{
     currentY = 0777 - y;
     if (oldCurrentY > currentY)
-        {
+    {
         refresh = TRUE;
-        }
+    }
 
     oldCurrentY = currentY;
-    }
+}
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Queue characters.
@@ -201,15 +208,13 @@ void windowSetY(u16 y)
 **
 **------------------------------------------------------------------------*/
 void windowQueue(u8 ch)
-    {
+{
     DispList *elem;
 
-    if ((listEnd >= ListSize)
-        || (currentX == -1)
-        || (currentY == -1))
-        {
+    if ((listEnd >= ListSize) || (currentX == -1) || (currentY == -1))
+    {
         return;
-        }
+    }
 
     /*
     **  Protect display list.
@@ -217,13 +222,13 @@ void windowQueue(u8 ch)
     pthread_mutex_lock(&mutexDisplay);
 
     if (ch != 0)
-        {
-        elem           = display + listEnd++;
-        elem->ch       = ch;
+    {
+        elem = display + listEnd++;
+        elem->ch = ch;
         elem->fontSize = currentFont;
-        elem->xPos     = currentX;
-        elem->yPos     = currentY;
-        }
+        elem->xPos = currentX;
+        elem->yPos = currentY;
+    }
 
     currentX += currentFont;
 
@@ -231,7 +236,7 @@ void windowQueue(u8 ch)
     **  Release display list.
     */
     pthread_mutex_unlock(&mutexDisplay);
-    }
+}
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Update window.
@@ -242,9 +247,9 @@ void windowQueue(u8 ch)
 **
 **------------------------------------------------------------------------*/
 void windowUpdate(void)
-    {
+{
     refresh = TRUE;
-    }
+}
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Poll the keyboard (dummy for X11)
@@ -255,8 +260,8 @@ void windowUpdate(void)
 **
 **------------------------------------------------------------------------*/
 void windowGetChar(void)
-    {
-    }
+{
+}
 
 /*--------------------------------------------------------------------------
 **  Purpose:        Terminate console window.
@@ -267,12 +272,12 @@ void windowGetChar(void)
 **
 **------------------------------------------------------------------------*/
 void windowTerminate(void)
-    {
+{
     printf("Shutting down window thread\n");
     displayActive = FALSE;
     sleep(1);
     printf("Shutting down main thread\n");
-    }
+}
 
 /*
  **--------------------------------------------------------------------------
@@ -291,39 +296,43 @@ void windowTerminate(void)
 **
 **------------------------------------------------------------------------*/
 void *windowThread(void *param)
-    {
+{
 
     /*
     ** Initialize SDL
-    */    
-	if (SDL_Init(SDL_INIT_VIDEO) != 0 ) 
-        {
-		fprintf(stderr, "Failed to initialize SDL2: %s\n", SDL_GetError());
-		exit(1);
-	    }
+    */
+    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    {
+        fprintf(stderr, "Failed to initialize SDL2: %s\n", SDL_GetError());
+        exit(1);
+    }
 
     /*
     ** Initialize SDL TrueType Font Support
     */
-    TTF_Init();
+    if (TTF_Init() != 0)
+    {
+        fprintf(stderr, "Failed to initialize SDL2_ttf: %s\n", SDL_GetError());
+        exit(1);
+    }
 
     /*
     **  Load three Cyber fonts.
     */
-	TTF_Font *hSmallFont  = TTF_OpenFont("FiraMono-Regular.ttf", 14);
-	TTF_Font *hMediumFont = TTF_OpenFont("FiraMono-Regular.ttf", 20);
-	TTF_Font *hLargeFont  = TTF_OpenFont("FiraMono-Regular.ttf", 26);
+    TTF_Font *hSmallFont = TTF_OpenFont("FiraMono-Regular.ttf", 14);
+    TTF_Font *hMediumFont = TTF_OpenFont("FiraMono-Regular.ttf", 20);
+    TTF_Font *hLargeFont = TTF_OpenFont("FiraMono-Regular.ttf", 26);
 
     /*
     **  Create a window.
     */
-    width  = 1100;
+    width = 1100;
     height = 750;
 
-	SDL_Window *window = NULL;
-	SDL_Renderer *renderer = NULL;
-	SDL_CreateWindowAndRenderer(width, height, 0, &window, &renderer);
-	
+    SDL_Window *window = NULL;
+    SDL_Renderer *renderer = NULL;
+    SDL_CreateWindowAndRenderer(width, height, 0, &window, &renderer);
+
     /*
     **  Set window and icon titles.
     */
@@ -334,23 +343,146 @@ void *windowThread(void *param)
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
 
-    SDL_SetWindowTitle(window,windowTitle);
+    SDL_SetWindowTitle(window, windowTitle);
 
     /*
-    **  Setup fore- and back-ground colors.
-    */   
-    SDL_Color bg = {0, 0, 0, 0};
-	SDL_Color fg = {255, 255, 255, 0};
+    **  Setup foregrond and background colors.
+    */
+    SDL_Color bg = {0, 0, 0};
+    SDL_Color fg = {0, 255, 0};
 
+    // NEEDS WORK
+
+    SDL_Surface *sur = TTF_RenderText_Shaded(hLargeFont, "Test from SDL", fg, bg);
+    SDL_Rect rect = {50, 100, sur->w, sur->h};
+
+    SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, sur);
+    SDL_FreeSurface(sur);
+
+    /*
+    **  Initialise input.
+    */
+
+    /*
+     **  We like to be on top.
+     */
+    SDL_RaiseWindow(window);
+
+    /*
+    **  Window thread loop.
+    */
+    displayActive = TRUE;
+    isMeta = FALSE;
+    while (displayActive)
+    {
+
+        /*
+        **  Process any SDL2 events.
+        */
+        SDL_Event event;
+
+
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            
+            case SDL_KEYDOWN:
+                /* Detect if the Left ALT / META key is down */
+                if (event.key.keysym.sym == SDLK_LALT)
+                {
+                    isMeta = TRUE;
+                }
+
+                /* Handle normal ASCII keys */
+                if (event.key.keysym.sym >= 32 && event.key.keysym.sym <= 127)
+                {
+                    if (isMeta == FALSE)
+                    {
+                        ppKeyIn = event.key.keysym.sym;
+                        sleepMsec(5);
+                    }
+                    else
+                    {
+                        switch (event.key.keysym.sym)
+                        {
+                        case '0':
+                        case '1':
+                        case '2':
+                        case '3':
+                        case '4':
+                        case '5':
+                        case '6':
+                        case '7':
+                        case '8':
+                        case '9':
+                            traceMask ^= (1 << (event.key.keysym.sym  - '0'));
+                            break;
+
+                        case 'c':
+                            traceMask ^= (1 << 14);
+                            break;
+
+                        case 'e':
+                            traceMask ^= (1 << 15);
+                            break;
+
+                        case 'x':
+                            if (traceMask == 0)
+                            {
+                                traceMask = ~0;
+                            }
+                            else
+                            {
+                                traceMask = 0;
+                            }
+                            break;
+
+                        case 'p':
+                            break;
+                        }
+                        ppKeyIn = 0;
+                    }
+                }
+                break;
+
+            case SDL_KEYUP:                
+                /* Detect if the Left ALT / META key is released */
+                if (event.key.keysym.sym == SDLK_LALT)
+                {
+                    isMeta = FALSE;
+                }
+                break;
+
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                break;
+
+            case SDL_WINDOWEVENT_CLOSE:
+                break;
+            }
+        }
+        
+        // FIX ME
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, tex, NULL, &rect);
+        SDL_RenderPresent(renderer);
+
+        /*
+        **  Give other threads a chance to run. This may require customisation.
+        */
+        sleepUsec(FrameTime);
+    }
+
+      // END NEEDS WORK
 
     /*
     **  SDL and thread cleanup
     */
-	//SDL_DestroyTexture(tex);
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	TTF_Quit();
+    SDL_DestroyTexture(tex);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    TTF_Quit();
     SDL_Quit();
     pthread_exit(NULL);
-    }
+}
 /*---------------------------  End Of File  ------------------------------*/
