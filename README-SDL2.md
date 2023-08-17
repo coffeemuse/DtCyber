@@ -1,6 +1,6 @@
 # DtCyber SDL2 Console - Experimental
 
-This is an experimental component to replace the legacy X11 console used for Linux builds. At present, it is not functional.
+This is an experimental component to replace the legacy X11 console used for Linux builds. At present, it is minimally functional and rather buggy.
 
 
 # Ultimate Goals

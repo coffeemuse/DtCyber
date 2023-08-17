@@ -402,7 +402,9 @@ void *windowThread(void *param)
                 }
 
                 /* Handle normal ASCII keys */
-                if (event.key.keysym.sym >= 32 && event.key.keysym.sym <= 127)
+                if ( (event.key.keysym.sym >= 32 && event.key.keysym.sym <= 127) 
+                    || event.key.keysym.sym == SDLK_BACKSPACE 
+                    || event.key.keysym.sym == SDLK_RETURN )
                 {
                     if (isMeta == FALSE)
                     {
@@ -513,7 +515,7 @@ void *windowThread(void *param)
             */
             if (oldFont != curr->fontSize)
             {
-                oldFont = curr->fontSize
+                oldFont = curr->fontSize;
             }
 
             /*
