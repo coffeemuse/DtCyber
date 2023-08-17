@@ -347,3 +347,11 @@ healthchecksdb
 
 # dtcyber build executable
 dtcyber
+
+
+log.txt
+stk/pid
+*/persistence/*
+*/disks/*
+NOS2.8.7/opt/completed-base-steps.json
+*.pid

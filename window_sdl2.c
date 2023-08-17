@@ -29,9 +29,8 @@
 
 /*
 **  NOTE TO SELF - Reformat this to conform to DtCyber
-**  coding standards. 
+**  coding standards.
 */
-
 
 /*
 **  -------------
@@ -102,7 +101,6 @@ static i16 currentX;
 static i16 currentY;
 static u16 oldCurrentY;
 static DispList display[ListSize];
-static bool isMeta;
 static u32 listEnd;
 static int width;
 static int height;
@@ -297,7 +295,16 @@ void windowTerminate(void)
 **------------------------------------------------------------------------*/
 void *windowThread(void *param)
 {
-
+    DispList *curr;
+    DispList *end;
+    bool isMeta = FALSE;
+    u8 oldFont = 0;
+    char str[2] = " ";
+    int usageDisplayCount = 0;
+    SDL_Surface *sur;
+    SDL_Texture *tex;
+    //SDL_Rect rect;
+    
     /*
     ** Initialize SDL
     */
@@ -320,8 +327,20 @@ void *windowThread(void *param)
     **  Load three Cyber fonts.
     */
     TTF_Font *hSmallFont = TTF_OpenFont("FiraMono-Regular.ttf", 14);
+    if (hSmallFont == NULL)
+    {
+        fprintf(stderr, "Failed to load specified small font.\n");
+    }
     TTF_Font *hMediumFont = TTF_OpenFont("FiraMono-Regular.ttf", 20);
+    if (hMediumFont == NULL)
+    {
+        fprintf(stderr, "Failed to load specified small font.\n");
+    }
     TTF_Font *hLargeFont = TTF_OpenFont("FiraMono-Regular.ttf", 26);
+    if (hLargeFont == NULL)
+    {
+        fprintf(stderr, "Failed to load specified small font.\n");
+    }
 
     /*
     **  Create a window.
@@ -339,10 +358,9 @@ void *windowThread(void *param)
     char windowTitle[132];
     windowTitle[0] = '\0';
     strcat(windowTitle, displayName);
-    strcat(windowTitle, "SDL Console");
+    strcat(windowTitle, " SDL");
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
-
     SDL_SetWindowTitle(window, windowTitle);
 
     /*
@@ -350,14 +368,6 @@ void *windowThread(void *param)
     */
     SDL_Color bg = {0, 0, 0};
     SDL_Color fg = {0, 255, 0};
-
-    // NEEDS WORK
-
-    SDL_Surface *sur = TTF_RenderText_Shaded(hLargeFont, "Test from SDL", fg, bg);
-    SDL_Rect rect = {50, 100, sur->w, sur->h};
-
-    SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, sur);
-    SDL_FreeSurface(sur);
 
     /*
     **  Initialise input.
@@ -375,18 +385,15 @@ void *windowThread(void *param)
     isMeta = FALSE;
     while (displayActive)
     {
-
         /*
         **  Process any SDL2 events.
         */
         SDL_Event event;
 
-
         while (SDL_PollEvent(&event))
         {
             switch (event.type)
             {
-            
             case SDL_KEYDOWN:
                 /* Detect if the Left ALT / META key is down */
                 if (event.key.keysym.sym == SDLK_LALT)
@@ -416,7 +423,7 @@ void *windowThread(void *param)
                         case '7':
                         case '8':
                         case '9':
-                            traceMask ^= (1 << (event.key.keysym.sym  - '0'));
+                            traceMask ^= (1 << (event.key.keysym.sym - '0'));
                             break;
 
                         case 'c':
@@ -446,7 +453,7 @@ void *windowThread(void *param)
                 }
                 break;
 
-            case SDL_KEYUP:                
+            case SDL_KEYUP:
                 /* Detect if the Left ALT / META key is released */
                 if (event.key.keysym.sym == SDLK_LALT)
                 {
@@ -461,40 +468,140 @@ void *windowThread(void *param)
                 break;
             }
         }
-        
+
         if (opPaused)
         {
             /*
             **  Display pause message.
             */
             static char opMessage[] = "Emulation paused";
-          //  XSetFont(disp, gc, hLargeFont);
-          //  oldFont = FontLarge;
-          //  XDrawString(disp, pixmap, gc, 20, 256, opMessage, strlen(opMessage));
+            //  XSetFont(disp, gc, hLargeFont);
+            //  oldFont = FontLarge;
+            //  XDrawString(disp, pixmap, gc, 20, 256, opMessage, strlen(opMessage));
         }
 
+        /*
+        **  Protect display list.
+        */
+        pthread_mutex_lock(&mutexDisplay);
 
-        // FIX ME
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, tex, NULL, &rect);
+        if (usageDisplayCount != 0)
+        {
+            /*
+            **  Display usage note when user attempts to close window.
+            */
+            static char usageMessage1[] = "Please don't just close the window, but instead first cleanly halt the operating system and";
+            static char usageMessage2[] = "then use the 'shutdown' command in the operator interface to terminate the emulation.";
+            // XSetFont(disp, gc, hMediumFont);
+            oldFont = FontMedium;
+            // XDrawString(disp, pixmap, gc, 20, 256, usageMessage1, strlen(usageMessage1));
+            // XDrawString(disp, pixmap, gc, 20, 275, usageMessage2, strlen(usageMessage2));
+            listEnd = 0;
+            usageDisplayCount -= 1;
+        }
+
+        /*
+        **  Draw display list in pixmap.
+        */
+        curr = display;
+        end = display + listEnd;
+
+        for (curr = display; curr < end; curr++)
+        {
+            /*
+            **  Setup new font if necessary.
+            */
+            if (oldFont != curr->fontSize)
+            {
+                oldFont = curr->fontSize
+            }
+
+            /*
+            **  Draw dot or character.
+            */
+            if (curr->fontSize == FontDot)
+            {
+                SDL_SetRenderDrawColor(renderer,0,255,0,0);
+                SDL_RenderDrawPoint(renderer,curr->xPos, (curr->yPos * 14) / 10 + 20);
+            }
+            else
+            {
+                str[0] = curr->ch;
+                SDL_SetRenderDrawColor(renderer,0,255,0,0);
+                switch (curr->fontSize)
+                {
+                case FontSmall:
+                    sur = TTF_RenderText_Solid(hSmallFont,str,fg);
+                    break;
+
+                case FontMedium:
+                   sur = TTF_RenderText_Solid(hMediumFont,str,fg);
+                    break;
+
+                case FontLarge:
+                    sur = TTF_RenderText_Solid(hLargeFont,str,fg);
+                    break;
+                }   
+            
+                tex = SDL_CreateTextureFromSurface(renderer, sur);
+                SDL_Rect rect = {curr->xPos, (curr->yPos * 14) / 10 + 20, sur->w, sur->h};
+                SDL_RenderCopy(renderer, tex, NULL, &rect);
+                SDL_DestroyTexture(tex);
+                SDL_FreeSurface(sur);
+                
+            }
+        }
+
+        listEnd = 0;
+        currentX = -1;
+        currentY = -1;
+        refresh = FALSE;
+
+        /*
+        **  Release display list.
+        */
+        pthread_mutex_unlock(&mutexDisplay);
+
+        /*
+        **  Update display from pixmap.
+        */
+        //XCopyArea(disp, pixmap, window, gc, 0, 0, width, height, 0, 0);
+
+        /*
+        **  Erase pixmap for next round.
+        */
+        //XSetForeground(disp, gc, bg);
+        //XFillRectangle(disp, pixmap, gc, 0, 0, width, height);
+
+        /*
+        **  Make sure the updates make it to the X11 server.
+        */
+        //XSync(disp, 0);
+
+
+
         SDL_RenderPresent(renderer);
-
+        SDL_SetRenderDrawColor(renderer,0,0,0,0);
+        SDL_RenderClear(renderer);
         /*
         **  Give other threads a chance to run. This may require customisation.
         */
         sleepUsec(FrameTime);
     }
 
-      // END NEEDS WORK
-
     /*
     **  SDL and thread cleanup
     */
-    SDL_DestroyTexture(tex);
+    
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    TTF_CloseFont(hSmallFont);
+    TTF_CloseFont(hMediumFont);
+    TTF_CloseFont(hLargeFont);
     TTF_Quit();
     SDL_Quit();
     pthread_exit(NULL);
 }
+
+
 /*---------------------------  End Of File  ------------------------------*/

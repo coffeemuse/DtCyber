@@ -34,6 +34,8 @@ LDFLAGS =
 INCL    = $(SDL_INCLUDE)
 EXTRACFLAGS = -Wno-switch -Wno-format-security
 
+# Remove -g from CFLAGS before release.  Needed for gdb during inital
+# development of the new SDL module
 CFLAGS  = -O2 -I. $(INCL) -std=gnu99 -g
 
 HDRS    =   const.h                 \

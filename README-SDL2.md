@@ -36,4 +36,4 @@ sudo apt libsdl2-2.0-0 libsdl2-dev libsdl2-image-2.0-0 libsdl2-image-dev libsdl2
 ### Important - Font Required
 You will also need a monospaced truetype font. For initial development I am using [Mozilla's FiraMono-Regular.ttf](https://github.com/mozilla/Fira/blob/master/ttf/FiraMono-Regular.ttf) available on [Mozilla/Fira](https://github.com/mozilla/Fira) under the [OFL license](0https://github.com/mozilla/Fira/blob/master/LICENSE). 
 
-I am not including the font.  You will need to download it and copy the font into your `DtCyber/` directory.
+I am not including the font.  You will need to download it and copy the font into the directory where you launch `dtcyber` (or `node start`).
