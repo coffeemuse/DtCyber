@@ -567,24 +567,18 @@ void *windowThread(void *param)
         /*
         **  Update display from pixmap.
         */
-        //XCopyArea(disp, pixmap, window, gc, 0, 0, width, height, 0, 0);
-
+        SDL_RenderPresent(renderer);
         /*
         **  Erase pixmap for next round.
         */
-        //XSetForeground(disp, gc, bg);
-        //XFillRectangle(disp, pixmap, gc, 0, 0, width, height);
+        SDL_SetRenderDrawColor(renderer,0,0,0,0);
+        SDL_RenderClear(renderer);
 
         /*
         **  Make sure the updates make it to the X11 server.
         */
         //XSync(disp, 0);
 
-
-
-        SDL_RenderPresent(renderer);
-        SDL_SetRenderDrawColor(renderer,0,0,0,0);
-        SDL_RenderClear(renderer);
         /*
         **  Give other threads a chance to run. This may require customisation.
         */
