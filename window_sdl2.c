@@ -305,6 +305,7 @@ void *windowThread(void *param)
     int usageDisplayCount = 0;
     SDL_Surface *sur;
     SDL_Texture *tex;
+    bool isFullScreen = FALSE;
     //SDL_Rect rect;
     
     /*
@@ -365,6 +366,8 @@ void *windowThread(void *param)
     strcat(windowTitle, " SDL");
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
+    // strcat(windowTitle, " - F12=FullScreen");
+    
     SDL_SetWindowTitle(window, windowTitle);
 
     /*
@@ -457,6 +460,23 @@ void *windowThread(void *param)
                         ppKeyIn = 0;
                     }
                 }
+
+                if (event.key.keysym.sym == SDLK_F12)
+                {
+                    
+                    if (isFullScreen)
+                    {
+                        SDL_RestoreWindow(window);
+                        SDL_SetWindowSize(window,1100,750);
+                        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+                        isFullScreen=FALSE;                     
+                    }
+                    else
+                    {
+                        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+                        isFullScreen = TRUE;
+                    }
+                }    
                 break;
 
             case SDL_KEYUP:

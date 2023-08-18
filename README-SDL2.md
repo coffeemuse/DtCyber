@@ -3,13 +3,18 @@
 This is an experimental component to replace the legacy X11 console used for Linux builds. At present, it is minimally functional and rather buggy.
 
 
+# Notable Working Features
+* Dynamic scaling.  Resize the window and contents will scale. 
+* Full Screen mode by pressing `F12``.  WARNING - This is VERY buggy.  It may get stuck in full screen mode.
+* Uses a TrueType Monospace font instead of bitmapped font.
+
 # Ultimate Goals
 * At least feature parity of legacy consoles
 * Cross-platform with a single console
 * Font will be truetype based for resizing
 * Allow changing font, size, and text color without recompiliation
 * Maybe autoscaling by just resizing the window.
-* Allow full-screen operation, for those that want a dedicated screen for DtCyber.
+* Allow full-screen operation, for those that want a dedicated screen for DtCyber. (Completed, but buggy! )
 
 
 # Roadmap - roughly in chronological order
