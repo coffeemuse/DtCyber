@@ -56,9 +56,9 @@
 */
 #define ListSize 5000
 #define FrameTime 100000
-//#define FramesPerSecond (1000000 / FrameTime)
-#define FramesPerSecond (60)
-
+#define FramesPerSecond (1000000 / FrameTime)
+//#define FramesPerSecond (60)
+#define CONDEBUG TRUE
 
 /*
 **  -----------------------
@@ -329,21 +329,32 @@ void *windowThread(void *param)
     /*
     **  Load three Cyber fonts.
     */
-    TTF_Font *hSmallFont = TTF_OpenFont("FiraMono-Regular.ttf", 14);
+    TTF_Font *hSmallFont = TTF_OpenFont("3270-Regular.ttf", 14);
     if (hSmallFont == NULL)
     {
         fprintf(stderr, "Failed to load specified small font.\n");
     }
-    TTF_Font *hMediumFont = TTF_OpenFont("FiraMono-Regular.ttf", 20);
+    TTF_Font *hMediumFont = TTF_OpenFont("3270-Regular.ttf", 28);
     if (hMediumFont == NULL)
     {
         fprintf(stderr, "Failed to load specified small font.\n");
     }
-    TTF_Font *hLargeFont = TTF_OpenFont("FiraMono-Regular.ttf", 26);
+    TTF_Font *hLargeFont = TTF_OpenFont("3270-Regular.ttf", 56);
     if (hLargeFont == NULL)
     {
         fprintf(stderr, "Failed to load specified small font.\n");
     }
+
+    #if CONDEBUG
+    int debugW;
+    int debugH;
+    TTF_SizeText(hSmallFont, "X", &debugW, &debugH);
+    fprintf(stderr,"Small Font: %d x %d\n", debugW, debugH);
+    TTF_SizeText(hMediumFont, "X", &debugW, &debugH);
+    fprintf(stderr,"Medium Font: %d x %d\n", debugW, debugH);
+    TTF_SizeText(hLargeFont, "X", &debugW, &debugH);
+    fprintf(stderr,"Large Font: %d x %d\n", debugW, debugH);
+    #endif
 
     /*
     **  Create a window.
@@ -460,23 +471,23 @@ void *windowThread(void *param)
                         ppKeyIn = 0;
                     }
                 }
-
-                if (event.key.keysym.sym == SDLK_F12)
-                {
+                // DISABLE F12 - Full Screen -- Too Buggy!
+                // if (event.key.keysym.sym == SDLK_F12)
+                // {
                     
-                    if (isFullScreen)
-                    {
-                        SDL_RestoreWindow(window);
-                        SDL_SetWindowSize(window,1100,750);
-                        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-                        isFullScreen=FALSE;                     
-                    }
-                    else
-                    {
-                        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-                        isFullScreen = TRUE;
-                    }
-                }    
+                //     if (isFullScreen == TRUE)
+                //     {
+                //         SDL_RestoreWindow(window);
+                //         SDL_SetWindowSize(window,1100,750);
+                //         SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+                //         isFullScreen=FALSE;                     
+                //     }
+                //     else
+                //     {
+                //         SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+                //         isFullScreen = TRUE;
+                //     }
+                // }    
                 break;
 
             case SDL_KEYUP:
@@ -586,7 +597,6 @@ void *windowThread(void *param)
                 SDL_RenderCopy(renderer, tex, NULL, &rect);
                 SDL_DestroyTexture(tex);
                 SDL_FreeSurface(sur);
-                
             }
         }
 
