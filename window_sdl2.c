@@ -56,7 +56,9 @@
 */
 #define ListSize 5000
 #define FrameTime 100000
-#define FramesPerSecond (1000000 / FrameTime)
+//#define FramesPerSecond (1000000 / FrameTime)
+#define FramesPerSecond (60)
+
 
 /*
 **  -----------------------
@@ -116,7 +118,7 @@ static pthread_mutex_t mutexDisplay;
 */
 
 /*--------------------------------------------------------------------------
-**  Purpose:        Create POSIX thread which will deal with all X11
+**  Purpose:        Create POSIX thread which will deal with all SDL2
 **                  functions.
 **
 **  Parameters:     Name        Description.
@@ -345,8 +347,8 @@ void *windowThread(void *param)
     /*
     **  Create a window.
     */
-    width = 1920;
-    height = 1080;
+    width = 1100;
+    height = 750;
 
     SDL_Window *window = NULL;
     SDL_Renderer *renderer = NULL;
@@ -478,10 +480,13 @@ void *windowThread(void *param)
             /*
             **  Display pause message.
             */
-            static char opMessage[] = "Emulation paused";
-            //  XSetFont(disp, gc, hLargeFont);
-            //  oldFont = FontLarge;
-            //  XDrawString(disp, pixmap, gc, 20, 256, opMessage, strlen(opMessage));
+            oldFont = FontLarge;
+            sur = TTF_RenderText_Blended(hLargeFont,"Emulation paused",fg);
+            tex = SDL_CreateTextureFromSurface(renderer, sur);
+            SDL_Rect rect = {20, 256, sur->w, sur->h};
+            SDL_RenderCopy(renderer, tex, NULL, &rect);
+            SDL_DestroyTexture(tex);
+            SDL_FreeSurface(sur);
         }
 
         /*
@@ -494,12 +499,21 @@ void *windowThread(void *param)
             /*
             **  Display usage note when user attempts to close window.
             */
-            static char usageMessage1[] = "Please don't just close the window, but instead first cleanly halt the operating system and";
-            static char usageMessage2[] = "then use the 'shutdown' command in the operator interface to terminate the emulation.";
-            // XSetFont(disp, gc, hMediumFont);
             oldFont = FontMedium;
-            // XDrawString(disp, pixmap, gc, 20, 256, usageMessage1, strlen(usageMessage1));
-            // XDrawString(disp, pixmap, gc, 20, 275, usageMessage2, strlen(usageMessage2));
+            sur = TTF_RenderText_Blended(hMediumFont,"Please don't just close the window, but instead first cleanly halt the operating system and",fg);
+            tex = SDL_CreateTextureFromSurface(renderer, sur);
+            SDL_Rect rect = {20, 256, sur->w, sur->h};
+            SDL_RenderCopy(renderer, tex, NULL, &rect);
+            SDL_DestroyTexture(tex);
+            SDL_FreeSurface(sur);
+
+            sur = TTF_RenderText_Blended(hMediumFont,"then use the 'shutdown' command in the operator interface to terminate the emulation.",fg);
+            tex = SDL_CreateTextureFromSurface(renderer, sur);
+            SDL_Rect rect2 = {20, 256, sur->w, sur->h};
+            SDL_RenderCopy(renderer, tex, NULL, &rect2);
+            SDL_DestroyTexture(tex);
+            SDL_FreeSurface(sur);
+            
             listEnd = 0;
             usageDisplayCount -= 1;
         }
@@ -525,13 +539,13 @@ void *windowThread(void *param)
             */
             if (curr->fontSize == FontDot)
             {
-                SDL_SetRenderDrawColor(renderer,0,255,0,0);
+                SDL_SetRenderDrawColor(renderer,0,255,0,255);
                 SDL_RenderDrawPoint(renderer,curr->xPos, (curr->yPos * 14) / 10 + 20);
             }
             else
             {
                 str[0] = curr->ch;
-                SDL_SetRenderDrawColor(renderer,0,255,0,0);
+                SDL_SetRenderDrawColor(renderer,0,255,0,255);
                 switch (curr->fontSize)
                 {
                 case FontSmall:
@@ -573,7 +587,7 @@ void *windowThread(void *param)
         /*
         **  Erase pixmap for next round.
         */
-        SDL_SetRenderDrawColor(renderer,0,0,0,0);
+        SDL_SetRenderDrawColor(renderer,0,0,0,255);
         SDL_RenderClear(renderer);
 
         /*
@@ -600,6 +614,5 @@ void *windowThread(void *param)
     SDL_Quit();
     pthread_exit(NULL);
 }
-
 
 /*---------------------------  End Of File  ------------------------------*/
