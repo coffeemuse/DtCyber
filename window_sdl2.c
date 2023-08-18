@@ -345,13 +345,15 @@ void *windowThread(void *param)
     /*
     **  Create a window.
     */
-    width = 1100;
-    height = 750;
+    width = 1920;
+    height = 1080;
 
     SDL_Window *window = NULL;
     SDL_Renderer *renderer = NULL;
-    SDL_CreateWindowAndRenderer(width, height, 0, &window, &renderer);
-
+    SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN, &window, &renderer);
+    SDL_RenderSetLogicalSize(renderer, 1100, 750);
+    SDL_SetWindowResizable(window, SDL_TRUE);
+    
     /*
     **  Set window and icon titles.
     */
@@ -533,15 +535,15 @@ void *windowThread(void *param)
                 switch (curr->fontSize)
                 {
                 case FontSmall:
-                    sur = TTF_RenderText_Solid(hSmallFont,str,fg);
+                    sur = TTF_RenderText_Blended(hSmallFont,str,fg);
                     break;
 
                 case FontMedium:
-                   sur = TTF_RenderText_Solid(hMediumFont,str,fg);
+                   sur = TTF_RenderText_Blended(hMediumFont,str,fg);
                     break;
 
                 case FontLarge:
-                    sur = TTF_RenderText_Solid(hLargeFont,str,fg);
+                    sur = TTF_RenderText_Blended(hLargeFont,str,fg);
                     break;
                 }   
             
