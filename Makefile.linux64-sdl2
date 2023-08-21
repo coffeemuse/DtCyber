@@ -26,7 +26,7 @@
 #
 #--------------------------------------------------------------------------
 
-SDL_LIB = -L/usr/lib -lSDL2 -lSDL2_ttf -Wl,-rpath=/usr/lib
+SDL_LIB = -L/usr/lib -lSDL2 -Wl,-rpath=/usr/lib
 SDL_INCLUDE = -I/usr/include
 
 LIBS    = -lm -lpthread -lrt $(SDL_LIB)
