@@ -70,7 +70,13 @@
 /*
 **  Large screen support.
 */
-#define CcLargeWin32Screen         1
+#define CcLargeWin32Screen         0
+
+/*
+**  SDL Consolesupport.
+*/
+#define CcSDLConsole               1
+
 
 /*
 **  Debug support
@@ -159,13 +165,32 @@
 #endif
 
 
-#if CcLargeWin32Screen == 1
-#define OffLeftScreen     010
-#define OffRightScreen    01100
-#else
-#define OffLeftScreen     010
-#define OffRightScreen    01040
+// #if CcLargeWin32Screen == 1
+// #define OffLeftScreen     010
+// #define OffRightScreen    01100
+// #else
+// #define OffLeftScreen     010
+// #define OffRightScreen    01040
+// #endif
+
+#if CcSDLConsole == 1 
+#define OffLeftScreen     0
+#define OffRightScreen    513
 #endif
+
+/* 
+** SDL Colors for Text / Dots
+*/
+#define SdlColorGreen       0
+#define SdlColorLightGreen  1
+#define SdlColorBlue        2
+#define SdlColorLightBlue   3
+#define SdlColorAmber       4
+#define SdlColorPink        5
+#define SdlColorYellow      6
+#define SdlColorWhite       7
+#define SdlColorBlack       8
+
 
 /*
 **  Bit masks.
@@ -238,7 +263,7 @@
 #define EmIndefiniteOperand        00040000
 
 #define EmFlagStackPurge           00200000
-#define EmFlagEnhancedBlockCopy    01000000
+#define EmFlagEnhancedBlockCopy    01000000 
 #define EmFlagExpandedAddress      02000000
 #define EmFlagUemEnable            04000000
 

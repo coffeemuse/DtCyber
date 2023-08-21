@@ -39,7 +39,6 @@
 */
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_main.h>
-#include <SDL2/SDL_ttf.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -57,14 +56,13 @@
 #define ListSize 5000
 #define FrameTime 100000
 #define FramesPerSecond (1000000 / FrameTime)
-//#define FramesPerSecond (60)
-#define CONDEBUG TRUE
 
 /*
 **  -----------------------
 **  Private Macro Functions
 **  -----------------------
 */
+#define coord(x,y) posX+(x*sizeX),posY+(y*sizeY)
 
 /*
 **  -----------------------------------------
@@ -85,6 +83,7 @@ typedef struct dispList
 **  ---------------------------
 */
 void *windowThread(void *param);
+void renderVectorText(SDL_Renderer*, char, int, int, int, u8, float, float);
 
 /*
 **  ----------------
@@ -318,54 +317,15 @@ void *windowThread(void *param)
     }
 
     /*
-    ** Initialize SDL TrueType Font Support
-    */
-    if (TTF_Init() != 0)
-    {
-        fprintf(stderr, "Failed to initialize SDL2_ttf: %s\n", SDL_GetError());
-        exit(1);
-    }
-
-    /*
-    **  Load three Cyber fonts.
-    */
-    TTF_Font *hSmallFont = TTF_OpenFont("3270-Regular.ttf", 14);
-    if (hSmallFont == NULL)
-    {
-        fprintf(stderr, "Failed to load specified small font.\n");
-    }
-    TTF_Font *hMediumFont = TTF_OpenFont("3270-Regular.ttf", 28);
-    if (hMediumFont == NULL)
-    {
-        fprintf(stderr, "Failed to load specified small font.\n");
-    }
-    TTF_Font *hLargeFont = TTF_OpenFont("3270-Regular.ttf", 56);
-    if (hLargeFont == NULL)
-    {
-        fprintf(stderr, "Failed to load specified small font.\n");
-    }
-
-    #if CONDEBUG
-    int debugW;
-    int debugH;
-    TTF_SizeText(hSmallFont, "X", &debugW, &debugH);
-    fprintf(stderr,"Small Font: %d x %d\n", debugW, debugH);
-    TTF_SizeText(hMediumFont, "X", &debugW, &debugH);
-    fprintf(stderr,"Medium Font: %d x %d\n", debugW, debugH);
-    TTF_SizeText(hLargeFont, "X", &debugW, &debugH);
-    fprintf(stderr,"Large Font: %d x %d\n", debugW, debugH);
-    #endif
-
-    /*
     **  Create a window.
     */
-    width = 1100;
-    height = 750;
-
+    int winWidth = 1024;
+    int winHeight = 512;
+    float scaleX = 1.0;
+    float scaleY = 1.0;
     SDL_Window *window = NULL;
     SDL_Renderer *renderer = NULL;
-    SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN, &window, &renderer);
-    SDL_RenderSetLogicalSize(renderer, 1100, 750);
+    SDL_CreateWindowAndRenderer(winWidth, winHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN, &window, &renderer);
     SDL_SetWindowResizable(window, SDL_TRUE);
     
     /*
@@ -378,7 +338,6 @@ void *windowThread(void *param)
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
     // strcat(windowTitle, " - F12=FullScreen");
-    
     SDL_SetWindowTitle(window, windowTitle);
 
     /*
@@ -386,10 +345,6 @@ void *windowThread(void *param)
     */
     SDL_Color bg = {0, 0, 0};
     SDL_Color fg = {0, 255, 0};
-
-    /*
-    **  Initialise input.
-    */
 
     /*
      **  We like to be on top.
@@ -471,23 +426,6 @@ void *windowThread(void *param)
                         ppKeyIn = 0;
                     }
                 }
-                // DISABLE F12 - Full Screen -- Too Buggy!
-                // if (event.key.keysym.sym == SDLK_F12)
-                // {
-                    
-                //     if (isFullScreen == TRUE)
-                //     {
-                //         SDL_RestoreWindow(window);
-                //         SDL_SetWindowSize(window,1100,750);
-                //         SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-                //         isFullScreen=FALSE;                     
-                //     }
-                //     else
-                //     {
-                //         SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-                //         isFullScreen = TRUE;
-                //     }
-                // }    
                 break;
 
             case SDL_KEYUP:
@@ -498,10 +436,26 @@ void *windowThread(void *param)
                 }
                 break;
 
-            case SDL_WINDOWEVENT_SIZE_CHANGED:
-                break;
+            case SDL_WINDOWEVENT:
+                
+                switch (event.window.event) 
+                {
 
-            case SDL_WINDOWEVENT_CLOSE:
+                    case SDL_WINDOWEVENT_RESIZED:
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:
+
+                        SDL_GetWindowSize(window, &winWidth, &winHeight);
+                        scaleX = winWidth/1024.0;
+                        scaleY = winHeight/512.0;  
+
+                        fprintf(stderr,"winH - %i\n",winHeight);
+                        fprintf(stderr,"winW - %i\n",winWidth);
+
+                        fprintf(stderr,"scaleX - %f\n",scaleX);
+                        fprintf(stderr,"scaleY - %f\n",scaleY);
+                        break;
+                }
+
                 break;
             }
         }
@@ -511,13 +465,13 @@ void *windowThread(void *param)
             /*
             **  Display pause message.
             */
-            oldFont = FontLarge;
-            sur = TTF_RenderText_Blended(hLargeFont,"Emulation paused",fg);
-            tex = SDL_CreateTextureFromSurface(renderer, sur);
-            SDL_Rect rect = {20, 256, sur->w, sur->h};
-            SDL_RenderCopy(renderer, tex, NULL, &rect);
-            SDL_DestroyTexture(tex);
-            SDL_FreeSurface(sur);
+            // oldFont = FontLarge;
+            // sur = TTF_RenderText_Blended(hLargeFont,"Emulation paused",fg);
+            // tex = SDL_CreateTextureFromSurface(renderer, sur);
+            // SDL_Rect rect = {20, 256, sur->w, sur->h};
+            // SDL_RenderCopy(renderer, tex, NULL, &rect);
+            // SDL_DestroyTexture(tex);
+            // SDL_FreeSurface(sur);
         }
 
         /*
@@ -530,20 +484,20 @@ void *windowThread(void *param)
             /*
             **  Display usage note when user attempts to close window.
             */
-            oldFont = FontMedium;
-            sur = TTF_RenderText_Blended(hMediumFont,"Please don't just close the window, but instead first cleanly halt the operating system and",fg);
-            tex = SDL_CreateTextureFromSurface(renderer, sur);
-            SDL_Rect rect = {20, 256, sur->w, sur->h};
-            SDL_RenderCopy(renderer, tex, NULL, &rect);
-            SDL_DestroyTexture(tex);
-            SDL_FreeSurface(sur);
+            // oldFont = FontMedium;
+            // sur = TTF_RenderText_Blended(hMediumFont,"Please don't just close the window, but instead first cleanly halt the operating system and",fg);
+            // tex = SDL_CreateTextureFromSurface(renderer, sur);
+            // SDL_Rect rect = {20, 256, sur->w, sur->h};
+            // SDL_RenderCopy(renderer, tex, NULL, &rect);
+            // SDL_DestroyTexture(tex);
+            // SDL_FreeSurface(sur);
 
-            sur = TTF_RenderText_Blended(hMediumFont,"then use the 'shutdown' command in the operator interface to terminate the emulation.",fg);
-            tex = SDL_CreateTextureFromSurface(renderer, sur);
-            SDL_Rect rect2 = {20, 256, sur->w, sur->h};
-            SDL_RenderCopy(renderer, tex, NULL, &rect2);
-            SDL_DestroyTexture(tex);
-            SDL_FreeSurface(sur);
+            // sur = TTF_RenderText_Blended(hMediumFont,"then use the 'shutdown' command in the operator interface to terminate the emulation.",fg);
+            // tex = SDL_CreateTextureFromSurface(renderer, sur);
+            // SDL_Rect rect2 = {20, 256, sur->w, sur->h};
+            // SDL_RenderCopy(renderer, tex, NULL, &rect2);
+            // SDL_DestroyTexture(tex);
+            // SDL_FreeSurface(sur);
             
             listEnd = 0;
             usageDisplayCount -= 1;
@@ -568,35 +522,20 @@ void *windowThread(void *param)
             /*
             **  Draw dot or character.
             */
+
+            //SetPixel(hdcMem, (curr->xPos * ScaleX) / 10, (curr->yPos * ScaleY) / 10 + 30, RGB(0, 255, 0));
+            //TextOut(hdcMem, (curr->xPos * ScaleX) / 10, (curr->yPos * ScaleY) / 10 + 20, str, 1);
+
             if (curr->fontSize == FontDot)
             {
                 SDL_SetRenderDrawColor(renderer,0,255,0,255);
-                SDL_RenderDrawPoint(renderer,curr->xPos, (curr->yPos * 14) / 10 + 20);
+                SDL_RenderDrawPoint(renderer,(curr->xPos* scaleX), (curr->yPos * scaleY)+ 30);
             }
             else
             {
                 str[0] = curr->ch;
                 SDL_SetRenderDrawColor(renderer,0,255,0,255);
-                switch (curr->fontSize)
-                {
-                case FontSmall:
-                    sur = TTF_RenderText_Blended(hSmallFont,str,fg);
-                    break;
-
-                case FontMedium:
-                   sur = TTF_RenderText_Blended(hMediumFont,str,fg);
-                    break;
-
-                case FontLarge:
-                    sur = TTF_RenderText_Blended(hLargeFont,str,fg);
-                    break;
-                }   
-            
-                tex = SDL_CreateTextureFromSurface(renderer, sur);
-                SDL_Rect rect = {curr->xPos, (curr->yPos * 14) / 10 + 20, sur->w, sur->h};
-                SDL_RenderCopy(renderer, tex, NULL, &rect);
-                SDL_DestroyTexture(tex);
-                SDL_FreeSurface(sur);
+                renderVectorText(renderer, str[0], curr->xPos, curr->yPos, curr->fontSize, 0, scaleX, scaleY);
             }
         }
 
@@ -609,6 +548,12 @@ void *windowThread(void *param)
         **  Release display list.
         */
         pthread_mutex_unlock(&mutexDisplay);
+
+        /*
+        ** Divide Display
+        */
+//       SDL_SetRenderDrawColor(renderer,255,255,255,255);
+//       SDL_RenderDrawLine(renderer,512,0,512,512);
 
         /*
         **  Update display from pixmap.
@@ -637,12 +582,530 @@ void *windowThread(void *param)
     
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-    TTF_CloseFont(hSmallFont);
-    TTF_CloseFont(hMediumFont);
-    TTF_CloseFont(hLargeFont);
-    TTF_Quit();
     SDL_Quit();
     pthread_exit(NULL);
 }
+
+
+
+
+void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 color, float scaleX, float scaleY)
+{
+    float posX = 0.0+(x*scaleX);
+    float posY = 0.0+(y*scaleY);
+    size = size/8;
+    float sizeX = size*scaleX;
+    float sizeY = size*scaleY;
+    SDL_SetRenderDrawColor(ren, 255,255,255,255);
+    
+    switch (c)
+    {
+        case 'A':
+            SDL_FPoint points65[] = {
+                {coord(0,6)},
+                {coord(3,0)},
+                {coord(6,6)},
+                {coord(5,4)},
+                {coord(1,4)}
+            };
+            SDL_RenderDrawLinesF(ren, points65, 5);
+            break;
+
+        case 'B':
+            SDL_FPoint points66[] = {
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(4,0)},
+                {coord(6,1)},
+                {coord(6,2)},
+                {coord(4,3)},
+                {coord(0,3)},
+                {coord(4,3)},
+                {coord(6,4)},
+                {coord(6,5)}, 
+                {coord(4,6)}, 
+                {coord(0,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points66, 12);
+            break;
+
+        case 'C':
+            SDL_FPoint points67[] = {
+                {coord(6,1)},
+                {coord(4,0)},
+                {coord(2,0)},
+                {coord(0,1)},
+                {coord(0,5)},
+                {coord(2,6)},
+                {coord(4,6)},
+                {coord(6,5)}
+            };
+
+            SDL_RenderDrawLinesF(ren, points67, 8);
+            break;
+
+        case 'D':
+            SDL_FPoint points68[] = {
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(4,0)},
+                {coord(6,1)},
+                {coord(6,5)},
+                {coord(4,6)},
+                {coord(0,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points68, 7);
+            break;
+
+        case 'E':
+            SDL_FPoint points69[] = {
+                {coord(6,6)},
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(6,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points69, 4);
+            SDL_RenderDrawLineF(ren,coord(0,2),coord(4,2));
+            break;
+
+        case 'F':
+            SDL_FPoint points70[] = {
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(6,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points70, 3);
+            SDL_RenderDrawLineF(ren,coord(0,3),coord(4,3));
+            break;
+
+        case 'G':
+            SDL_FPoint points71[] = {
+                {coord(6,1)},
+                {coord(4,0)},
+                {coord(2,0)},
+                {coord(0,1)},
+                {coord(0,5)},
+                {coord(2,6)},
+                {coord(4,6)},
+                {coord(6,5)},
+                {coord(6,3)},
+                {coord(4,3)}
+            };
+            SDL_RenderDrawLinesF(ren, points71, 10);
+            break;
+
+        case 'H': 
+            SDL_RenderDrawLineF(ren,coord(0,0),coord(0,6));
+            SDL_RenderDrawLineF(ren,coord(6,0),coord(6,6));
+            SDL_RenderDrawLineF(ren,coord(0,3),coord(6,3));
+            break;
+
+        case 'I':
+            SDL_RenderDrawLineF(ren,coord(0,0),coord(6,0));
+            SDL_RenderDrawLineF(ren,coord(3,0),coord(3,6));
+            SDL_RenderDrawLineF(ren,coord(0,6),coord(6,6));
+            break;
+
+        case 'J':
+            SDL_FPoint points74[] = {
+                {coord(6,0)},
+                {coord(6,4)},
+                {coord(4,6)},
+                {coord(2,6)},
+                {coord(0,4)}
+            };
+            SDL_RenderDrawLinesF(ren, points74, 5);
+            break;
+        
+        case 'K':
+            SDL_FPoint points75[] = {
+                {coord(6,0)},
+                {coord(0,3)},
+                {coord(6,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points75, 3);
+            SDL_RenderDrawLineF(ren,coord(0,0),coord(0,6));
+            break;
+        
+        case 'L':
+            SDL_FPoint points76[] = {
+                {coord(0,0)},
+                {coord(0,6)},
+                {coord(6,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points76, 3);
+            break;
+        
+        case 'M':
+            SDL_FPoint points77[] = {
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(3,3)},
+                {coord(6,0)},
+                {coord(6,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points77, 5);
+            break;
+        case 'N':
+            SDL_FPoint points78[] = {
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(6,6)},
+                {coord(6,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points78, 4);
+            break;
+
+        case 'O':
+            SDL_FPoint points79[] = {
+                {coord(0,4)},
+                {coord(0,2)},
+                {coord(2,0)},
+                {coord(4,0)},
+                {coord(6,2)},
+                {coord(6,4)},
+                {coord(4,6)},
+                {coord(2,6)},
+                {coord(0,4)}
+            };
+            SDL_RenderDrawLinesF(ren, points79, 9);
+            break;
+
+        case 'P':
+            SDL_FPoint points80[] = {
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(4,0)},
+                {coord(6,1)},
+                {coord(6,2)},
+                {coord(4,3)},
+                {coord(0,3)}
+            };
+            SDL_RenderDrawLinesF(ren, points80, 7);
+            break; 
+
+        case 'Q':
+            SDL_FPoint points81[] = {
+                {coord(0,4)},
+                {coord(0,2)},
+                {coord(2,0)},
+                {coord(4,0)},
+                {coord(6,2)},
+                {coord(6,4)},
+                {coord(4,6)},
+                {coord(2,6)},
+                {coord(0,4)}
+            };
+            SDL_RenderDrawLinesF(ren, points81, 9);
+            SDL_RenderDrawLineF(ren,coord(4,4),coord(6,6));
+            break;
+
+        case 'R':
+            SDL_FPoint points82[] = {
+                {coord(0,6)},
+                {coord(0,0)},
+                {coord(4,0)},
+                {coord(6,1)},
+                {coord(6,2)},
+                {coord(4,3)},
+                {coord(0,3)},
+                {coord(6,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points82, 8);
+
+            break;
+
+        case 'S':
+            SDL_FPoint points83[] = {
+                {coord(0,5)},
+                {coord(2,6)},
+                {coord(4,6)},
+                {coord(6,5)},
+                {coord(6,4)},
+                {coord(4,3)},
+                {coord(2,3)},
+                {coord(0,2)},
+                {coord(0,1)},
+                {coord(2,0)},
+                {coord(4,0)},
+                {coord(6,1)}
+            };
+            SDL_RenderDrawLinesF(ren, points83, 12);
+            break;
+
+        case 'T':
+            SDL_RenderDrawLineF(ren,coord(0,0),coord(6,0));
+            SDL_RenderDrawLineF(ren,coord(3,0),coord(3,6));
+            break;
+
+        case 'U':
+            SDL_FPoint points85[] = {
+                {coord(0,0)},
+                {coord(0,4)},
+                {coord(1,6)},
+                {coord(5,6)},
+                {coord(6,4)},
+                {coord(6,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points85, 6);
+            break;
+
+        case 'V':
+            SDL_FPoint points86[] = {
+                {coord(0,0)},
+                {coord(3,6)},
+                {coord(6,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points86, 3);
+            break;
+        
+        case 'W':
+            SDL_FPoint points87[] = {
+                {coord(0,0)},
+                {coord(0,6)},
+                {coord(3,3)},
+                {coord(6,6)},
+                {coord(6,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points87, 5);
+            break;
+
+        case 'X':
+            SDL_RenderDrawLineF(ren,coord(0,0),coord(6,6));
+            SDL_RenderDrawLineF(ren,coord(0,6),coord(6,0));
+            break;
+
+        case 'Y':
+            SDL_RenderDrawLineF(ren,coord(0,0),coord(3,3));
+            SDL_RenderDrawLineF(ren,coord(3,3),coord(6,0));
+            SDL_RenderDrawLineF(ren,coord(3,3),coord(3,6));
+            break;
+
+        case 'Z':
+            SDL_FPoint points90[] = {
+                {coord(0,0)},
+                {coord(6,0)},
+                {coord(0,6)},
+                {coord(6,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points90, 4);
+            break;
+
+        // Numbers
+        case '0':
+            SDL_FPoint points48[] = {
+                {coord(1,0)},
+                {coord(5,0)},
+                {coord(6,1)},
+                {coord(6,5)},
+                {coord(5,6)},
+                {coord(1,6)},
+                {coord(0,5)},
+                {coord(0,1)},
+                {coord(1,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points48, 9);
+            break;
+
+        case '1':
+            SDL_FPoint points49[] = {
+                {coord(1,1)},
+                {coord(3,0)},
+                {coord(3,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points49, 3);
+            break;
+
+        case '2':
+            SDL_FPoint points50[] = {
+                {coord(0,1)},
+                {coord(2,0)},
+                {coord(4,0)},
+                {coord(6,1)},
+                {coord(6,2)},
+                {coord(2,4)},
+                {coord(0,6)},
+                {coord(6,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points50, 8);
+            break;
+
+        case '3':
+            SDL_FPoint points51[] = {
+                {coord(0,0)},
+                {coord(6,0)},
+                {coord(2,2)},
+                {coord(4,2)},
+                {coord(6,3)},
+                {coord(6,5)},
+                {coord(4,6)},
+                {coord(3,6)},
+                {coord(0,5)}
+            };
+            SDL_RenderDrawLinesF(ren, points51, 9);            
+            break;
+
+        case '4':           
+            SDL_FPoint points52[] = {
+                {coord(4,6)},
+                {coord(4,0)},
+                {coord(0,3)},
+                {coord(6,3)}
+            };
+            SDL_RenderDrawLinesF(ren, points52, 4);
+            break;
+
+        case '5':
+            SDL_FPoint points53[] = {
+                {coord(0,5)},
+                {coord(2,6)},
+                {coord(4,6)},
+                {coord(6,5)},
+                {coord(6,3)},
+                {coord(4,2)},
+                {coord(0,2)},
+                {coord(0,0)},
+                {coord(6,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points53, 9);
+
+            break;
+
+        case '6':
+            SDL_FPoint points54[] = {
+                {coord(6,1)},
+                {coord(4,0)},
+                {coord(2,0)},
+                {coord(0,1)},
+                {coord(0,5)},
+                {coord(2,6)},
+                {coord(4,6)},
+                {coord(6,5)},
+                {coord(6,3)},
+                {coord(4,2)},
+                {coord(2,2)},
+                {coord(0,3)}
+            };
+            SDL_RenderDrawLinesF(ren, points54, 12);
+            break;
+
+        case '7':
+            SDL_FPoint points55[] = {
+                {coord(0,0)},
+                {coord(6,0)},
+                {coord(3,3)},
+                {coord(2,5)},
+                {coord(2,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points55, 5);
+            break;
+
+        case '8':
+            SDL_FPoint points56[] = {
+                {coord(2,0)},
+                {coord(4,0)},
+                {coord(6,1)},
+                {coord(6,2)},
+                {coord(4,3)},
+                {coord(2,3)},
+                {coord(0,4)},
+                {coord(0,5)},
+                {coord(2,6)},
+                {coord(4,6)},
+                {coord(6,5)},
+                {coord(6,4)},
+                {coord(4,3)},
+                {coord(2,3)},
+                {coord(0,2)},
+                {coord(0,1)},
+                {coord(2,0)}
+            };
+            SDL_RenderDrawLinesF(ren, points56, 17);
+            break;
+      
+        case '9':
+            SDL_FPoint points57[] = {
+                {coord(0,5)},
+                {coord(2,6)},
+                {coord(4,6)},
+                {coord(6,5)},
+                {coord(6,1)},
+                {coord(4,0)},
+                {coord(2,0)},
+                {coord(0,1)},
+                {coord(0,3)},
+                {coord(2,4)},
+                {coord(4,4)},
+                {coord(6,3)}
+            };
+            SDL_RenderDrawLinesF(ren, points57, 12);
+            break;
+
+        // Symbols
+        case ' ':
+            // Nothing to draw for a space
+            break;
+
+        case '=':
+            SDL_RenderDrawLineF(ren,coord(1,2),coord(5,2));
+            SDL_RenderDrawLineF(ren,coord(1,4),coord(5,4));
+            break;
+            
+        case '-':
+            SDL_RenderDrawLineF(ren,coord(1,3),coord(5,3));
+            break;
+
+        case '+':
+            SDL_RenderDrawLineF(ren,coord(1,3),coord(5,3));
+            SDL_RenderDrawLineF(ren,coord(3,1),coord(3,5));   
+            break;
+        
+        case '*':
+            SDL_RenderDrawLineF(ren,coord(1,1),coord(5,5));
+            SDL_RenderDrawLineF(ren,coord(1,5),coord(5,1));
+            SDL_RenderDrawLineF(ren,coord(1,3),coord(5,3));
+            break;
+        
+        case ',':
+            SDL_RenderDrawLineF(ren,coord(0,6),coord(1,5));
+            break;
+        
+        case '.':
+            // This is just too small!  Need to find a way to make it larger
+            SDL_RenderDrawPointF(ren,coord(0,6));         
+            break;
+        
+        case '(':
+            SDL_FPoint points40[] = {
+                {coord(4,0)},
+                {coord(3,1)},
+                {coord(3,5)},
+                {coord(4,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points40, 4);
+            break;
+
+        case ')':
+            SDL_FPoint points41[] = {
+                {coord(2,0)},
+                {coord(3,1)},
+                {coord(3,5)},
+                {coord(2,6)}
+            };
+            SDL_RenderDrawLinesF(ren, points41, 4);
+            break;
+
+        case '/':
+            SDL_RenderDrawLineF(ren,coord(0,6),coord(6,0));
+            break;
+
+        default:
+        // Do nothing for unknown / unsupported characters.
+    }
+
+}
+
+
+
 
 /*---------------------------  End Of File  ------------------------------*/
