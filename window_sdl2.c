@@ -29,7 +29,7 @@
 
 /*
 **  NOTE TO SELF - Reformat this to conform to DtCyber
-**  coding standards.
+**  coding standards before final release.
 */
 
 /*
@@ -305,8 +305,8 @@ void *windowThread(void *param)
     SDL_Surface *sur;
     SDL_Texture *tex;
     bool isFullScreen = FALSE;
-    //SDL_Rect rect;
-    
+
+
     /*
     ** Initialize SDL
     */
@@ -338,7 +338,6 @@ void *windowThread(void *param)
     strcat(windowTitle, " SDL");
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
-    // strcat(windowTitle, " - F12=FullScreen");
     SDL_SetWindowTitle(window, windowTitle);
 
     /*
@@ -369,13 +368,17 @@ void *windowThread(void *param)
             switch (event.type)
             {
             case SDL_KEYDOWN:
-                /* Detect if the Left ALT / META key is down */
+                /* 
+                ** Detect if the Left ALT / META key is down 
+                */
                 if (event.key.keysym.sym == SDLK_LALT)
                 {
                     isMeta = TRUE;
                 }
 
-                /* Handle normal ASCII keys */
+                /* 
+                ** Handle normal ASCII keys 
+                */
                 if ( (event.key.keysym.sym >= 32 && event.key.keysym.sym <= 127) 
                     || event.key.keysym.sym == SDLK_BACKSPACE 
                     || event.key.keysym.sym == SDLK_RETURN )
@@ -430,7 +433,9 @@ void *windowThread(void *param)
                 break;
 
             case SDL_KEYUP:
-                /* Detect if the Left ALT / META key is released */
+                /* 
+                ** Detect if the Left ALT / META key is released. 
+                */
                 if (event.key.keysym.sym == SDLK_LALT)
                 {
                     isMeta = FALSE;
@@ -506,7 +511,7 @@ void *windowThread(void *param)
         }
 
         /*
-        **  Draw display list in pixmap.
+        **  Draw display list on renderer.
         */
         curr = display;
         end = display + listEnd;
@@ -607,6 +612,10 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
     
     switch (c)
     {
+        /*
+        ** Draw Letters
+        */
+        
         case 'A':
             SDL_FPoint points65[] = {
                 {coord(0,6)},
@@ -753,6 +762,7 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
             };
             SDL_RenderDrawLinesF(ren, points77, 5);
             break;
+
         case 'N':
             SDL_FPoint points78[] = {
                 {coord(0,6)},
@@ -819,7 +829,6 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
                 {coord(6,6)}
             };
             SDL_RenderDrawLinesF(ren, points82, 8);
-
             break;
 
         case 'S':
@@ -898,7 +907,9 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
             SDL_RenderDrawLinesF(ren, points90, 4);
             break;
 
-        // Numbers
+       /*
+       ** Draw Numbers
+       */
         case '0':
             SDL_FPoint points48[] = {
                 {coord(1,0)},
@@ -975,7 +986,6 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
                 {coord(6,0)}
             };
             SDL_RenderDrawLinesF(ren, points53, 9);
-
             break;
 
         case '6':
@@ -1048,9 +1058,13 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
             SDL_RenderDrawLinesF(ren, points57, 12);
             break;
 
-        // Symbols
+        /*
+        ** Symbols
+        */
         case ' ':
-            // Nothing to draw for a space
+            /*
+            ** Nothing to draw for a space.
+            */
             break;
 
         case '=':
@@ -1078,7 +1092,9 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
             break;
         
         case '.':
-            // This is just too small!  Need to find a way to make it larger
+            /*
+            **  [TODO] This is just too small!  Need to find a way to make it larger
+            */ 
             SDL_RenderDrawPointF(ren,coord(0,6));         
             break;
         
@@ -1107,7 +1123,9 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
             break;
 
         default:
-        // Do nothing for unknown / unsupported characters.
+        /*
+        ** Do nothing for unknown / unsupported characters.
+        */
     }
 
 }
