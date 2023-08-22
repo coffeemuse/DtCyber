@@ -580,9 +580,22 @@ void *windowThread(void *param)
     SDL_Quit();
     pthread_exit(NULL);
 }
-
-
-
+/*--------------------------------------------------------------------------
+**  Purpose:        Draw text to the screen
+**
+**  Parameters:     Name        Description.
+**                  ren         SDL_Renderer
+**                  c           character to be drawn
+**                  x           horinzontal coordinate
+**                  y           vertical coordinate
+**                  size        font size
+**                  color       color
+**                  scaleX      scale factor for X
+**                  scaleY      scale factor for Y
+**
+**  Returns:        Nothing.
+**
+**------------------------------------------------------------------------*/
 void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 color, float scaleX, float scaleY)
 {
     float posX = 0.0+(x*scaleX);
