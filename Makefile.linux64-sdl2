@@ -36,7 +36,7 @@ EXTRACFLAGS = -Wno-switch -Wno-format-security
 
 # Remove -g from CFLAGS before release.  Needed for gdb during inital
 # development of the new SDL module
-CFLAGS  = -O2 -I. $(INCL) -std=gnu99 
+CFLAGS  = -O2 -I. $(INCL) -std=gnu99
 
 HDRS    =   const.h                 \
             cyber_channel_linux.h   \

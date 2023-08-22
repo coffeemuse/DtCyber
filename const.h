@@ -73,9 +73,15 @@
 #define CcLargeWin32Screen         0
 
 /*
-**  SDL Consolesupport.
+**  Small screen support.
 */
-#define CcSDLConsole               1
+#define CcSmallWin32Screen         0
+
+
+/*
+**  SDL Console support.
+*/
+#define CcSDLScreen                1
 
 
 /*
@@ -165,19 +171,20 @@
 #endif
 
 
-// #if CcLargeWin32Screen == 1
-// #define OffLeftScreen     010
-// #define OffRightScreen    01100
-// #else
-// #define OffLeftScreen     010
-// #define OffRightScreen    01040
-// #endif
-
-#if CcSDLConsole == 1 
-#define OffLeftScreen     0
-#define OffRightScreen    513
+#if CcLargeWin32Screen == 1
+#define OffLeftScreen     010
+#define OffRightScreen    01100
 #endif
 
+#if CcSmallWin32Screen == 1
+#define OffLeftScreen     010
+#define OffRightScreen    01040
+#endif
+
+#if CcSDLScreen        == 1
+#define OffLeftScreen     010
+#define OffRightScreen    01030
+#endif
 /* 
 ** SDL Colors for Text / Dots
 */

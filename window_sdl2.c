@@ -319,12 +319,13 @@ void *windowThread(void *param)
     /*
     **  Create a window.
     */
-    int winWidth = 1024;
+    int winWidth = 1056;
     int winHeight = 512;
     float scaleX = 1.0;
     float scaleY = 1.0;
     SDL_Window *window = NULL;
     SDL_Renderer *renderer = NULL;
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     SDL_CreateWindowAndRenderer(winWidth, winHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN, &window, &renderer);
     SDL_SetWindowResizable(window, SDL_TRUE);
     
@@ -445,9 +446,10 @@ void *windowThread(void *param)
                     case SDL_WINDOWEVENT_SIZE_CHANGED:
 
                         SDL_GetWindowSize(window, &winWidth, &winHeight);
-                        scaleX = winWidth/1024.0;
+                        scaleX = winWidth/1056.0;
                         scaleY = winHeight/512.0;  
 
+                        //DEBUG -CoffeeMuse
                         fprintf(stderr,"winH - %i\n",winHeight);
                         fprintf(stderr,"winW - %i\n",winWidth);
 
@@ -465,13 +467,14 @@ void *windowThread(void *param)
             /*
             **  Display pause message.
             */
-            // oldFont = FontLarge;
-            // sur = TTF_RenderText_Blended(hLargeFont,"Emulation paused",fg);
-            // tex = SDL_CreateTextureFromSurface(renderer, sur);
-            // SDL_Rect rect = {20, 256, sur->w, sur->h};
-            // SDL_RenderCopy(renderer, tex, NULL, &rect);
-            // SDL_DestroyTexture(tex);
-            // SDL_FreeSurface(sur);
+            oldFont = FontLarge;
+            static char opMessage[] = "EMULATION PAUSED";
+            // loop through chars in array and draw them
+            for (int i = 0; i < strlen(opMessage); i++)
+            {
+                renderVectorText(renderer, opMessage[i], (i*32)+128, 256, 32, 0, scaleX, scaleY);
+            }
+
         }
 
         /*
@@ -484,20 +487,19 @@ void *windowThread(void *param)
             /*
             **  Display usage note when user attempts to close window.
             */
-            // oldFont = FontMedium;
-            // sur = TTF_RenderText_Blended(hMediumFont,"Please don't just close the window, but instead first cleanly halt the operating system and",fg);
-            // tex = SDL_CreateTextureFromSurface(renderer, sur);
-            // SDL_Rect rect = {20, 256, sur->w, sur->h};
-            // SDL_RenderCopy(renderer, tex, NULL, &rect);
-            // SDL_DestroyTexture(tex);
-            // SDL_FreeSurface(sur);
+            char usageMessage1[] = "PLEASE DO NOT CLOSE THIS WINDOW. FIRST CLEANLY SHUTDOWN THE OPERATING SYSTEM";
+            char usageMessage2[] = "THEN USE THE (SHUTDOWN) COMMAND IN THE OPEATOR INTERFACE TO SHUTDOWN EMULATOR.)";
+            oldFont = FontMedium;
 
-            // sur = TTF_RenderText_Blended(hMediumFont,"then use the 'shutdown' command in the operator interface to terminate the emulation.",fg);
-            // tex = SDL_CreateTextureFromSurface(renderer, sur);
-            // SDL_Rect rect2 = {20, 256, sur->w, sur->h};
-            // SDL_RenderCopy(renderer, tex, NULL, &rect2);
-            // SDL_DestroyTexture(tex);
-            // SDL_FreeSurface(sur);
+            for (int i = 0; i < strlen(usageMessage1); i++)
+            {
+                renderVectorText(renderer, usageMessage1[i], (i*16)+16, 256, 16, 0, scaleX, scaleY);
+            }
+
+            for (int i = 0; i < strlen(usageMessage2); i++)
+            {
+                renderVectorText(renderer, usageMessage2[i], (i*16)+16, 275, 16, 0, scaleX, scaleY);
+            }
             
             listEnd = 0;
             usageDisplayCount -= 1;
@@ -528,8 +530,11 @@ void *windowThread(void *param)
 
             if (curr->fontSize == FontDot)
             {
-                SDL_SetRenderDrawColor(renderer,0,255,0,255);
+                SDL_SetRenderDrawColor(renderer,255,255,255,255);
                 SDL_RenderDrawPoint(renderer,(curr->xPos* scaleX), (curr->yPos * scaleY)+ 30);
+
+                //SDL_RenderDrawPoint(renderer,(curr->xPos* scaleX), (curr->yPos * scaleY));
+
             }
             else
             {
@@ -550,25 +555,15 @@ void *windowThread(void *param)
         pthread_mutex_unlock(&mutexDisplay);
 
         /*
-        ** Divide Display
+        **  Render the Display
         */
-//       SDL_SetRenderDrawColor(renderer,255,255,255,255);
-//       SDL_RenderDrawLine(renderer,512,0,512,512);
 
-        /*
-        **  Update display from pixmap.
-        */
         SDL_RenderPresent(renderer);
         /*
-        **  Erase pixmap for next round.
+        **  Erase renderer for next round.
         */
         SDL_SetRenderDrawColor(renderer,0,0,0,255);
         SDL_RenderClear(renderer);
-
-        /*
-        **  Make sure the updates make it to the X11 server.
-        */
-        //XSync(disp, 0);
 
         /*
         **  Give other threads a chance to run. This may require customisation.
@@ -585,7 +580,6 @@ void *windowThread(void *param)
     SDL_Quit();
     pthread_exit(NULL);
 }
-
 
 
 
@@ -1104,8 +1098,5 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
     }
 
 }
-
-
-
 
 /*---------------------------  End Of File  ------------------------------*/
