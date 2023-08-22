@@ -57,6 +57,16 @@
 #define FrameTime 100000
 #define FramesPerSecond (1000000 / FrameTime)
 
+#define SdlTextColorWhite 0
+#define SdlTextColorGreen  1
+#define SdlTextColorBlue   2
+#define SdlTextColorAmber  3
+#define SdlTextColorRed    4
+#define SdlTextColorCyan   5
+#define SdlTextColorPurple 6
+
+
+
 /*
 **  -----------------------
 **  Private Macro Functions
@@ -306,7 +316,7 @@ void *windowThread(void *param)
     SDL_Texture *tex;
     bool isFullScreen = FALSE;
 
-
+    int DrawingColor = SdlTextColorWhite;
     /*
     ** Initialize SDL
     */
@@ -338,6 +348,7 @@ void *windowThread(void *param)
     strcat(windowTitle, " SDL");
     strcat(windowTitle, " - " DtCyberVersion);
     strcat(windowTitle, " - " DtCyberBuildDate);
+    strcat(windowTitle, " - F11-Color / F12-Fullscreen");
     SDL_SetWindowTitle(window, windowTitle);
 
     /*
@@ -430,6 +441,35 @@ void *windowThread(void *param)
                         ppKeyIn = 0;
                     }
                 }
+
+                /*
+                ** F11 - Change drawing color
+                */
+                if (event.key.keysym.sym == SDLK_F11)
+                {
+                    DrawingColor++;
+                    if (DrawingColor > 6)
+                    {
+                        DrawingColor = 0;
+                    }
+                }
+
+                /*
+                ** F12 - Toggle full screen
+                */
+                if (event.key.keysym.sym == SDLK_F12)
+                {
+                    if (isFullScreen == FALSE)
+                    {
+                        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                        isFullScreen = TRUE;
+                    }
+                    else
+                    {
+                        SDL_SetWindowFullscreen(window, 0);
+                        isFullScreen = FALSE;
+                    }
+                }
                 break;
 
             case SDL_KEYUP:
@@ -446,23 +486,17 @@ void *windowThread(void *param)
                 
                 switch (event.window.event) 
                 {
-
                     case SDL_WINDOWEVENT_RESIZED:
                     case SDL_WINDOWEVENT_SIZE_CHANGED:
 
+                        /*
+                        ** Window has changed size, so we need to recalculate the scale factors.
+                        */
                         SDL_GetWindowSize(window, &winWidth, &winHeight);
                         scaleX = winWidth/1056.0;
                         scaleY = winHeight/512.0;  
-
-                        //DEBUG -CoffeeMuse
-                        fprintf(stderr,"winH - %i\n",winHeight);
-                        fprintf(stderr,"winW - %i\n",winWidth);
-
-                        fprintf(stderr,"scaleX - %f\n",scaleX);
-                        fprintf(stderr,"scaleY - %f\n",scaleY);
                         break;
                 }
-
                 break;
             }
         }
@@ -498,12 +532,12 @@ void *windowThread(void *param)
 
             for (int i = 0; i < strlen(usageMessage1); i++)
             {
-                renderVectorText(renderer, usageMessage1[i], (i*16)+16, 256, 16, 0, scaleX, scaleY);
+                renderVectorText(renderer, usageMessage1[i], (i*16)+16, 256, 16, DrawingColor, scaleX, scaleY);
             }
 
             for (int i = 0; i < strlen(usageMessage2); i++)
             {
-                renderVectorText(renderer, usageMessage2[i], (i*16)+16, 275, 16, 0, scaleX, scaleY);
+                renderVectorText(renderer, usageMessage2[i], (i*16)+16, 275, 16, DrawingColor, scaleX, scaleY);
             }
             
             listEnd = 0;
@@ -529,13 +563,32 @@ void *windowThread(void *param)
             /*
             **  Draw dot or character.
             */
-
-            //SetPixel(hdcMem, (curr->xPos * ScaleX) / 10, (curr->yPos * ScaleY) / 10 + 30, RGB(0, 255, 0));
-            //TextOut(hdcMem, (curr->xPos * ScaleX) / 10, (curr->yPos * ScaleY) / 10 + 20, str, 1);
-
             if (curr->fontSize == FontDot)
-            {
-                SDL_SetRenderDrawColor(renderer,255,255,255,255);
+            {   switch (DrawingColor)
+                {
+                    case SdlTextColorWhite:
+                        SDL_SetRenderDrawColor(renderer,255,255,255,255);
+                        break;
+                    case SdlTextColorGreen:
+                        SDL_SetRenderDrawColor(renderer,0,255,0,255);
+                        break;
+                    case SdlTextColorBlue:
+                        SDL_SetRenderDrawColor(renderer,0,0,255,255);
+                        break;
+                    case SdlTextColorAmber:
+                        SDL_SetRenderDrawColor(renderer,255,255,0,255);
+                        break;
+                    case SdlTextColorRed:
+                        SDL_SetRenderDrawColor(renderer,255,0,0,255);
+                        break;
+                    case SdlTextColorCyan:
+                        SDL_SetRenderDrawColor(renderer,0,255,255,255);
+                        break;
+                    case SdlTextColorPurple:
+                        SDL_SetRenderDrawColor(renderer,255,0,255,255);
+                        break;
+                }
+                //SDL_SetRenderDrawColor(renderer,255,255,255,255);
                 SDL_RenderDrawPoint(renderer,(curr->xPos* scaleX), (curr->yPos * scaleY)+ 30);
 
                 //SDL_RenderDrawPoint(renderer,(curr->xPos* scaleX), (curr->yPos * scaleY));
@@ -545,7 +598,7 @@ void *windowThread(void *param)
             {
                 str[0] = curr->ch;
                 SDL_SetRenderDrawColor(renderer,0,255,0,255);
-                renderVectorText(renderer, str[0], curr->xPos, curr->yPos, curr->fontSize, 0, scaleX, scaleY);
+                renderVectorText(renderer, str[0], curr->xPos, curr->yPos, curr->fontSize, DrawingColor, scaleX, scaleY);
             }
         }
 
@@ -560,10 +613,10 @@ void *windowThread(void *param)
         pthread_mutex_unlock(&mutexDisplay);
 
         /*
-        **  Render the Display
+        **  Force the renderer to present the window contents.
         */
-
         SDL_RenderPresent(renderer);
+        
         /*
         **  Erase renderer for next round.
         */
@@ -577,9 +630,8 @@ void *windowThread(void *param)
     }
 
     /*
-    **  SDL and thread cleanup
-    */
-    
+    **  SDL and thread cleanup.
+    */  
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -608,7 +660,32 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
     size = size/8;
     float sizeX = size*scaleX;
     float sizeY = size*scaleY;
-    SDL_SetRenderDrawColor(ren, 255,255,255,255);
+
+    switch (color)
+    {
+        case SdlTextColorWhite:
+            SDL_SetRenderDrawColor(ren,255,255,255,255);
+            break;
+        case SdlTextColorGreen:
+            SDL_SetRenderDrawColor(ren,0,255,0,255);
+            break;
+        case SdlTextColorBlue:
+            SDL_SetRenderDrawColor(ren,0,0,255,255);
+            break;
+        case SdlTextColorAmber:
+            SDL_SetRenderDrawColor(ren,255,255,0,255);
+            break;
+        case SdlTextColorRed:
+            SDL_SetRenderDrawColor(ren,255,0,0,255);
+            break;
+        case SdlTextColorCyan:  
+            SDL_SetRenderDrawColor(ren,0,255,255,255);
+            break;
+        case SdlTextColorPurple:
+            SDL_SetRenderDrawColor(ren,255,0,255,255);
+            break;
+    }
+
     
     switch (c)
     {
@@ -1127,7 +1204,6 @@ void renderVectorText(SDL_Renderer* ren, char c, int x, int y, int size, u8 colo
         ** Do nothing for unknown / unsupported characters.
         */
     }
-
 }
 
 /*---------------------------  End Of File  ------------------------------*/

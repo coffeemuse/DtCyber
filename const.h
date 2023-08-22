@@ -77,12 +77,10 @@
 */
 #define CcSmallWin32Screen         0
 
-
 /*
 **  SDL Console support.
 */
 #define CcSDLScreen                1
-
 
 /*
 **  Debug support
@@ -185,18 +183,7 @@
 #define OffLeftScreen     010
 #define OffRightScreen    01030
 #endif
-/* 
-** SDL Colors for Text / Dots
-*/
-#define SdlColorGreen       0
-#define SdlColorLightGreen  1
-#define SdlColorBlue        2
-#define SdlColorLightBlue   3
-#define SdlColorAmber       4
-#define SdlColorPink        5
-#define SdlColorYellow      6
-#define SdlColorWhite       7
-#define SdlColorBlack       8
+
 
 
 /*
