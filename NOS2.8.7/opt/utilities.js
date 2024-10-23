@@ -50,7 +50,7 @@ const utilities = {
     const options = {
       jobname:  "DELMOD",
       username: "NETADMN",
-      password: "NETADMN"
+      password: utilities.getPropertyValue(utilities.getCustomProperties(dtc), "PASSWORDS", "NETADMN", "NETADMN")
     };
     return dtc.say("Update NDL ...")
     .then(() => dtc.createJobWithOutput(12, 4, job, options));
@@ -69,7 +69,12 @@ const utilities = {
       "$REWIND,IPRD01.",
       "$COPYSBF,IPRD01."
     ];
-    return dtc.createJobWithOutput(12, 4, job, {jobname:"GETIPRD"})
+    const options = {
+      jobname: "GETIPRD",
+      username: "INSTALL",
+      password: utilities.getPropertyValue(utilities.getCustomProperties(dtc), "PASSWORDS", "INSTALL", "INSTALL")
+    };
+    return dtc.createJobWithOutput(12, 4, job, options)
     .then(iprd01 => {
       let si = 0;
       while (si < iprd01.length) {
@@ -92,6 +97,8 @@ const utilities = {
       ];
       const options = {
         jobname: "UPDIPRD",
+        username: "INSTALL",
+        password: utilities.getPropertyValue(utilities.getCustomProperties(dtc), "PASSWORDS", "INSTALL", "INSTALL"),
         data:    iprd01
       };
       return dtc.createJobWithOutput(12, 4, job, options);
@@ -126,8 +133,7 @@ const utilities = {
 
   getDefaultNjeRoute: dtc => {
     if (typeof utilities.defaultNjeRoute === "undefined") {
-      const customProps = utilities.getCustomProperties(dtc);
-      utilities.defaultNjeRoute = utilities.getPropertyValue(customProps, "NETWORK", "defaultRoute", null);
+      utilities.defaultNjeRoute = utilities.getPropertyValue(utilities.getCustomProperties(dtc), "NETWORK", "defaultRoute", null);
       if (utilities.defaultNjeRoute === null) {
         const hostID = utilities.getHostId(dtc);
         let localNode = utilities.njeTopology[hostID];
@@ -150,7 +156,82 @@ const utilities = {
     ];
     if (typeof options === "undefined") options = {};
     options.jobname = "GETFILE";
+    if (typeof options.username === "undefined" && typeof options.user === "undefined") {
+      options.username = "INSTALL";
+      options.password = utilities.getPropertyValue(utilities.getCustomProperties(dtc), "PASSWORDS", "INSTALL", "INSTALL");
+    }
     return dtc.createJobWithOutput(12, 4, job, options);
+  },
+
+  getHaspTerminals: dtc => {
+
+    if (typeof utilities.haspTerminals !== "undefined") return utilities.haspTerminals;
+
+    const customProps = utilities.getCustomProperties(dtc);
+    let   nextPort    = 0x26;
+    let   portCount   = 2;
+    let   terminals   = [];
+
+    if (typeof customProps["NETWORK"] !== "undefined") {
+      for (let line of customProps["NETWORK"]) {
+        line = line.toUpperCase();
+        let ei = line.indexOf("=");
+        if (ei < 0) continue;
+        let key   = line.substring(0, ei).trim();
+        let value = line.substring(ei + 1).trim();
+        if (key === "HASPTERMINAL") {
+          //
+          //  haspTerminal=<name>,<tcp-port>,[,B<block-size>]
+          //
+          let items = value.split(",");
+          if (items.length >= 2) {
+            let terminal = {
+              id:        items.shift(),
+              tcpPort:   parseInt(items.shift()),
+              blockSize: 400
+            };
+            while (items.length > 0) {
+              let item = items.shift();
+              if (item.startsWith("B")) {
+                terminal.blockSize = parseInt(item.substring(1));
+              }
+            }
+            terminals.push(terminal);
+          }
+        }
+        else if (key === "HASPPORTS") {
+          let items = value.split(",");
+          if (items.length > 0) nextPort  = parseInt(items.shift());
+          if (items.length > 0) portCount = parseInt(items.shift());
+        }
+      }
+    }
+    terminals.sort((t1, t2) => {
+      let p1 = t1.tcpPort;
+      let p2 = t2.tcpPort;
+      if (p1 < p2) {
+        return -1;
+      }
+      else if (p1 > p2) {
+        return 1;
+      }
+      else if (t1.id.toUpperCase() < t2.id.toUpperCase()) {
+        return -1;
+      }
+      else if (t1.id.toUpperCase() > t2.id.toUpperCase()) {
+        return 1;
+      }
+      else {
+        return 0;
+      }
+    });
+    for (const terminal of terminals) {
+      if (portCount < 1) throw new Error("Insufficient number of HASP ports defined");
+      terminal.claPort = nextPort++;
+      portCount -= 1;
+    }
+    utilities.haspTerminals = terminals;
+    return utilities.haspTerminals;
   },
 
   getHostDomainName: dtc => {
@@ -174,8 +255,7 @@ const utilities = {
     if (typeof utilities.hostId !== "undefined") return utilities.hostId;
     const iniProps = dtc.getIniProperties(dtc);
     let hostId = utilities.getPropertyValue(iniProps, "npu.nos287", "hostID", null);
-    const customProps = utilities.getCustomProperties(dtc);
-    hostId = utilities.getPropertyValue(customProps, "NETWORK", "hostID", hostId);
+    hostId = utilities.getPropertyValue(utilities.getCustomProperties(dtc), "NETWORK", "hostID", hostId);
     utilities.hostId = hostId !== null ? hostId.toUpperCase() : `M${utilities.getMachineId(dtc)}`;
     return utilities.hostId;
   },
@@ -228,8 +308,7 @@ const utilities = {
 
   getMachineId: dtc => {
     if (typeof utilities.machineId !== "undefined") return utilities.machineId;
-    const customProps = utilities.getCustomProperties(dtc);
-    let mid = utilities.getPropertyValue(customProps, "CMRDECK", "MID", "01");
+    let mid = utilities.getPropertyValue(utilities.getCustomProperties(dtc), "CMRDECK", "MID", "01");
     utilities.machineId = mid.substring(0, 2).toUpperCase();
     return utilities.machineId;
   },
@@ -471,6 +550,10 @@ const utilities = {
     ];
     if (typeof options === "undefined") options = {};
     options.jobname = "GTRSYS";
+    if (typeof options.username === "undefined" && typeof options.user === "undefined") {
+      options.username = "INSTALL";
+      options.password = utilities.getPropertyValue(utilities.getCustomProperties(dtc), "PASSWORDS", "INSTALL", "INSTALL");
+    }
     return dtc.createJobWithOutput(12, 4, job, options);
   },
 
@@ -671,7 +754,7 @@ const utilities = {
     const options = {
       jobname:  "UPDNDL",
       username: "NETADMN",
-      password: "NETADMN",
+      password: utilities.getPropertyValue(utilities.getCustomProperties(dtc), "PASSWORDS", "NETADMN", "NETADMN"),
       data:     modset
     };
     return dtc.createJobWithOutput(12, 4, job, options)

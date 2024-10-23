@@ -19,17 +19,23 @@ real Control Data computer systems back in the 1980's and 90's.
 ## Table of Contents
 - [Prerequisites](#prereq)
 - [Installation Steps](#steps)
+- &nbsp;&nbsp;&nbsp;&nbsp;[Other Installation Options](#installopts)
 - [Login](#login)
+- [Web Console](#web-console)
 - [Remote Job Entry](#rje)
 - &nbsp;&nbsp;&nbsp;&nbsp;[TieLine Facility (TLF)](#tlf)
 - [Network Job Entry](#nje)
 - &nbsp;&nbsp;&nbsp;&nbsp;[Using NJE](#usingnje)
+- &nbsp;&nbsp;&nbsp;&nbsp;[NJE Services](#njeservices)
+- &nbsp;&nbsp;&nbsp;&nbsp;[CONFER and NJE-based Chat](#confer)
 - &nbsp;&nbsp;&nbsp;&nbsp;[NJF vs TLF](#njf-vs-tlf)
 - [UMass Mailer](#email)
 - &nbsp;&nbsp;&nbsp;&nbsp;[E-mail Reflector](#reflector)
 - [NOS to NOS networking (RHP - Remote Host Products)](#rhp)
 - &nbsp;&nbsp;&nbsp;&nbsp;[Using RHP](#usingrhp)
+- [TCP/IP Applications](#tcpip)
 - [Cray Station](#cray)
+- &nbsp;&nbsp;&nbsp;&nbsp;[COS Tools](#cos-tools)
 - [Shutdown and Restart](#shutdown)
 - [Operator Command Extensions](#opext)
 - [Continuing an Interrupted Installation](#continuing)
@@ -37,6 +43,7 @@ real Control Data computer systems back in the 1980's and 90's.
 - [Creating a New Deadstart Tape](#newds)
 - [Installing a Full System from Scratch](#instfull)
 - [Installing a Minimal System](#instmin)
+- [Upgrading Cyber 865 to Cyber 875](#upgrade875)
 - [Customizing the NOS 2.8.7 Configuration](#reconfig)
 - &nbsp;&nbsp;&nbsp;&nbsp;[[CMRDECK]](#cmrdeck)
 - &nbsp;&nbsp;&nbsp;&nbsp;[[EQPDECK]](#eqpdeck)
@@ -44,15 +51,19 @@ real Control Data computer systems back in the 1980's and 90's.
 - &nbsp;&nbsp;&nbsp;&nbsp;[[NETWORK]](#network)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[crayStation](#crayStation)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[defaultRoute](#defaultRoute)
+- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[haspPorts](#haspPorts)
+- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[haspTerminal](#haspTerminal)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[hostID](#hostID)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[networkInterface](#networkInterface)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[njeNode](#njeNode)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[njePorts](#njePorts)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[rhpNode](#rhpNode)
+- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[safNode](#safNode)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[smtpDomain](#smtpDomain)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[stkDrivePath](#stkDrivePath)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[tlfNode](#tlfNode)
 - &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[tlfPorts](#tlfPorts)
+- &nbsp;&nbsp;&nbsp;&nbsp;[[PASSWORDS]](#passwords)
 - &nbsp;&nbsp;&nbsp;&nbsp;[[RESOLVER]](#resolver)
 - [Customized Configuration Examples](#cfgexamples)
 - [A Note About Anti-Virus Software](#virus)
@@ -120,6 +131,44 @@ and various other goodies including CYBIS, ICEM (an early CAD/CAM system), CDCS 
 relational database subsystem), and GPLOT (a graphics package). Welcome back to
 supercomputing in the 1980's!
 
+### <a id="installopts"></a>Other Installation Options
+The installation tool provides options for installing other variants of the operating system, including installation of fully customized sets of programming languages and other
+features. The general syntax of a call to the tool is:
+
+```
+[sudo] node install [basic | full | (readytorun | rtr) [<image name>]][(continue | cont)]
+  basic      : install a basic system from scratch without any optional products
+  full       : install a full system from scratch with all optional products
+  readytorun : (alias rtr) install a ready-to-run system image
+               <image name> is one of:
+                 nos287-full-865       : full NOS 2.8.7 system running on a Cyber 865 (default)
+                 nos287-full-875       : full NOS 2.8.7 system running on a Cyber 875
+                 nos287-full-875-beast : full NOS 2.8.7 system running on a Cyber 875
+                                         with 16M ESM and four 885-42 disks
+                 nos287-most-175       : full NOS 2.8.7 system (except CYBIS) running
+                                         on a Cyber 175 with four 885-42 disks
+
+  continue   : (alias cont) continue basic or full installation from last point of interruption
+```
+
+See [Installing a Minimal System](#instmin) for a description of the `basic` option, and see [Installing a Full System from Scratch](#instfull) for a description of the `full` option.
+
+The default option is `readytorun` (alias `rtr`). This option downloads and installs a
+previously created system image by name. The names of currently available images are
+shown in the table, below. The name of the default image is `nos287-full-865`.
+
+| Name            | Description                                                      |
+|-----------------|------------------------------------------------------------------|
+| nos287&minus;full&minus;865 | This image includes all available programming languages and other features, and it runs on a **Cyber 865** mainframe with a full complement (2M words) of central memory and 2M words of ESM. **This is the default system image.** |
+| nos287&minus;full&minus;875 | This image includes all available programming languages and other features, and it runs on a **Cyber 875** mainframe with a full complement (4M words) of central memory and 2M words of ESM. |
+| nos287&minus;full&minus;875&minus;beast | This image includes all available programming languages and other features, and it runs on a **Cyber 875** mainframe with a full complement (4M words) of central memory, 16M words of ESM, and four 885-42 buffered disk drives. |
+| nos287-most-175 | This image includes all available programming languages and other features, except CYBIS. It runs on a **Cyber 175** mainframe with a full complement (256K words) of central memory, 2M words of ESM, and four 885-42 buffered disk drives. |
+
+Example:
+```
+sudo node install rtr nos287-full-875
+```
+
 ## <a id="login"></a>Login
 You may log into the system using your web browser. *DtCyber* is configured to
 start a special web server that supports browser-based terminal emulators. For the NOS
@@ -180,6 +229,26 @@ The following CYBIS users are available:
 | fortrancob| ccrm     | none     | Cyber Record Manager combined course  |
 | fortran   | cfortran | none     | Cyber FORTRAN lessons                 |
 | cobol     | ccobol   | none     | Cyber COBOL lessons                   |
+
+## <a id="web-console"></a>Web Console
+*DtCyber* is configured to start a special web server that supports browser-based user
+interfaces to the system console. For the NOS 2.8.7 system, this web server listens for
+connections on TCP port 18001. When you request your web browser to open the following
+URL:
+
+>`http://localhost:18001`
+
+it will display a page showing the systems served by the web-based console server and the
+types of service provided. Ordinarily, two entries will be shown, and they represent two
+types of access to the system console of the NOS 2.8.7 system. One provides a 2-dimensional
+representation of the console, and the other provides a 3-dimensional one. When you click on either link, a browser-based console emulator will launch, and the local console window
+(either the X-Windows interface on Linux/Unix, or the Windows interface on Microsoft operating
+systems) will suspend after issuing a message indicating *Remote console active*.
+
+You may use the browser-based interface to interact with the system in the same way that you
+use the local console interface. The NOS 2.8.7 system itself cannot distinguish between the
+two forms of user interface. When you close the browser window in which the system console
+interface is running, control will revert automatically to the local console user interface.
 
 ## <a id="rje"></a>Remote Job Entry
 The system listens for RJE (remote job entry) connections on TCP port 2553. You
@@ -393,16 +462,16 @@ execute `reconfigure` (or `node reconfigure`) to apply and activate the changes.
 ### <a id="usingnje"></a>Using NJE
 NJE (Network Job Entry) enables you to submit a batch job from one system in the
 network to another, and the job's output will be returned automatically to the origin
-system. NJE also enables you to send data files between users on different systems. An
-NJE network is a peer-to-peer network, i.e., every node in the network has the same
-capabilities to send and receive jobs and files.
+system. NJE also enables you to send messages and data files between users on different
+systems. An NJE network is a peer-to-peer network, i.e., every node in the network has the
+same capabilities to send and receive jobs, messages, and files.
 
 An NJE network is a *store-and-forward* network. This means that you can submit a
-job, or send a file, to any node in the network without your local host's needing to be
-connected directly to all other nodes. If the target system of a job or file is not
-directly connected to your local host, your local host will route it to a directly
-connected peer that is closer to the destination and that peer will repeat the process,
-recursively, until the job or file reaches the target system.
+job, or send a message or file, to any node in the network without your local host's
+needing to be connected directly to all other nodes. If the target system of a job,
+message, or file is not directly connected to your local host, your local host will route
+it to a directly connected peer that is closer to the destination and that peer will repeat
+the process, recursively, until the job, message, or file reaches the target system.
 
 `NJF` (Network Job Facility) is the subsystem that provides NJE for NOS. It includes a
 command, `NJROUTE`, that enables you to send jobs and files to any node in the NJE
@@ -485,14 +554,203 @@ Example:
 ROUTE,MYJOB,DC=TO,ST=MAX.
 ```
 
+NJF also provides commands named `NJCMD` and `NJMSG`. These commands enable users to send
+commands and short messages, respectively, across the NJE network to remote services and
+users. In each case, such commands and messages comprise of a single line of text with
+a maximum length of about 130 characters. The general syntax of the commands is:
+
+```
+NJCMD[,F=origuser][,I=ilfn][,N=destnode][,O=olfn][,W=secs].[node][command text]
+```
+```
+NJMSG[,F=origuser][,I=ilfn][,N=destnode][,O=olfn][,U=destuser][,W=secs].[user@node][message text]
+```
+
+where:
+- *origuser* : optional 1 - 8 character name of the originating user or service, default is the NOS username of the calling user.
+- *ilfn* : optional name of a local input file. If this argument is specified, the text of the command or message to be sent is read from the specified local file. If the file contains more than one line, multiple commands or messages will be sent, one per line.
+- *destnode* : optional 1 - 8 character name of the destination NJE node. If this argument is omitted, the destination user and node names must be specified after the command terminator.
+- *olfn* : optional name of a local output file. If this argument is specified, any messages received from the destination node will be written to the specified local file. Otherwise, any messages received will be written to OUTPUT. Specifying *O=0* suppresses output.
+- *destuser* : optional 1 - 8 charaacter name of the destination user or service. If this argument is omitted, the destination user/service and node names must be specified after the command terminator. Note that this parameter pertains only to `NJMSG` because NJE messages may be addressed to specific users or services. By contrast, NJE commands are processed directly by the NJE subsystem of the destination node, so `NJCMD` does not require a destination user or service name to be supplied.
+- *secs* : maximum number of seconds to wait for response messages after sending message(s). The default is 10.
+- *node* or *user@node* : if the **N=** and **U=** arguments are not provided, the first token after the command terminator is assumed to have the form `node` for `NJCMD` and `user@node` for `NJMSG`, and it is taken as the specification of the destination user/service and node names to which commands or messages will be sent.
+- *message text* : if the **I=** argument is not provided, the command or message to be sent
+is taken from text following the command terminator.
+
+Examples:
+```
+NJMSG.INFO@NCCMAX /INFO
+NJMSG.GUEST@NCCM01 HELLO, ARE YOU THERE?
+NJMSG,U=GUEST,N=NCCM01,I=MSGS,W=0.
+
+NJCMD.RELAY INFO
+NJCMD,N=NCCCMS.CPQ TIME
+```
+
+The first example sends the message `/INFO` to a service (presumably) named `INFO` on NJE node `NCCMAX`, and it waits 10 seconds for a response. The second example sends the message
+`HELLO, ARE YOU THERE?` to a user named `GUEST` on NJE node `NCCM01`, and it waits 10
+seconds for a response. The third example sends possibly multiple messages (one per line)
+from the local file named `MSGS` to a user named `GUEST` on NJE node `NCCM01`, and it does
+not wait for responses. The fourth example sends the command `INFO` to NJE node `RELAY`, and
+the last example sends the command `CPQ TIME` to NJE node `NCCCMS`.
+
+### <a id="njeservices"></a>NJE Services
+Network services may be built using NJE's messaging capability, and two such services are
+provided by the default installation of NOS 2.8.7. The services are named `ECHO` and
+`INFO`. `ECHO` is a service that simply echoes each message it receives back to the
+sender. It can be used to test that a NOS 2.8.7 node is available on the NJE network. For
+example, to send a message to the `ECHO` service on node `NCCMAX`, enter the following
+command:
+
+```
+NJMSG.ECHO@NCCMAX PLEASE ECHO ME
+```
+
+The `INFO` service provides information about the NOS 2.8.7 system on which it is running.
+It accepts some simple commands and responds by sending corresponding information. All
+commands begin with the character **/**. Send it a `HELP` command to see what commands it
+accepts, as in:
+
+```
+NJMSG.INFO@NCCMAX /HELP
+```
+
+The response will look like:
+```
+ COMMANDS AVAILABLE:
+   /HELP  : SHOW THIS HELP
+   /INFO  : SHOW ALL AVAILABLE INFO
+   /STATS : SHOW STATISTICS
+   /TIME  : SHOW START TIME AND UPTIME
+```
+
+To obtain all available information about node `NCCMAX`, enter the following command:
+```
+NJMSG.INFO@NCCMAX /INFO
+```
+and the response will look like:
+```
+    TITLE: (MAX)IMUM - CYBER 875.
+       OS: NOS 2.8.7 871/871.
+ SOFTWARE: NJEF 2.7.1, NJMD 1.0
+  STARTED: 23/09/21. 21.26.07.
+      NOW: 23/09/26. 10.47.04.
+   UPTIME: 4 DAYS, 13 HOURS, 20 MINUTES, 57 SECONDS
+ REQUESTS: 34
+ MESSAGES: 181
+```
+
+A NOS application named `NJMD` (NJE Messaging Daemon) implements NJE services, and it
+supports creation of custom services. Two files named `NJMDCF` and `NJMDLIB` in the catalog
+of username `NJF` provide `NJMD`'s configuration. `NJMDCF` defines each service, with one
+service definition per line. Each line has three fields, as follows:
+
+- *name*. The first field defines the 1 - 8 character name of the service.
+- *command*. The second field specifies the command that implements the service. Ordinarily, it is a `BEGIN` command that calls a CCL procedure found in `NJMDLIB`.
+- *authentication*. The username and password to be used in executing the command.
+
+Each time `NJMD` receives a message for a service it supports, it creates and submits a
+batch job to respond to the message. The username and password for the batch job are taken
+from the *authentication* field of the service's entry in `NJMDCF`. The primary command
+executed by the batch job is taken from the *command* field of the entry, and `NJMD`
+arranges to pass three arguments to it:
+
+1. the name of the service itself
+2. the name of the originating user
+3. the name of the originating NJE node.
+
+`NJMD` also arranges to provide the text of the message as the job's `INPUT` file.
+
+Typically, the command implementing the service will read and process the `INPUT` file and
+write its response to an output file. It will then use the `NJMSG` command to return its
+response to the originating user.
+
+As an example, the `ECHO` service is defined as a CCL procedure. Its source code can be
+found in procedure library `NJMDLIB` (a file in the catalog of username `NJF`).
+
+### <a id="confer"></a>CONFER and NJE-based Chat
+`CONFER` is a NOS network application implemented in the mid-1980's by the University of
+Massachusetts (UMass).
+UMass distributed it freely to many other universities and research institutions around the
+world. It was intended to provide online teleconferencing services (hence, its name),
+although it's probably more easily recognized now as a *group chat* application.
+
+Originally, `CONFER` supported only local users, i.e., users connected directly to a NOS
+system via local interactive terminals attached to NPU's or CDCNet. Since the original
+implementation, however, `CONFER` has been enhanced to use the NJE messaging services
+exposed by `NJF`. This enables `CONFER` to serve as a network group chat application.
+
+One way to access `CONFER` is to log into NOS 2.8.7 as usual, then use the `HELLO` command
+to exit `IAF` and enter `CONFER`, as in:
+
+```
+HELLO,CONFER
+```
+
+`CONFER` will present a welcome dialog and invite you to begin interacting with it. For
+example, to send a public message to everyone in your conference, simply enter the text
+you want to send, then enter an empty line to send it. To send a personal message to a
+specific user, use the `/whisper` (abbreviated `/w`) command, as in:
+
+```
+What are your plans today?
+/w Name of User
+```
+
+The `/whisper` command can also be used to send a message to a specific user on another
+host in the NJE network, as in:
+
+```
+What are your plans today?
+/w Guest@NCCMAX
+```
+
+Note the syntax in this case: *username***@***nodename*, where *username* is the 1 - 8
+character username of the remote NJE user, and *nodename* is the 1 - 8 character name
+of the NJE user's host computer system.
+
+While you are logged into `CONFER`, users logged into other hosts in the NJE network may
+send personal messages to you too. They address you using your NOS login username and the
+NJE node name of your NOS 2.8.7 system. For example, if you are logged into `CONFER` as
+username `GUEST`, and your system's NJE node name is `NOSHOBBY`, a user of an IBM VM/CMS
+system running RSCS could send you a personal message by entering the following command:
+
+```
+smsg rscs m noshobby guest What's up, doc?
+```
+
+Users on other NJE nodes may also send public messages and commands to `CONFER` by
+addressing them to the service named `CHAT` at your host's NJE node name. For example, a
+user on an IBM VM/CMS node running RSCS could send a public message to users of `CONFER`
+on node `NCCMAX` by entering the following command:
+
+```
+smsg rscs m nccmax chat Is anyone attending the symposium this weekend?
+```
+
+Commands begin with the character **/**. To ask for help information from `CONFER` on
+node `NCCMAX`, an IBM VM/CMS user would enter the following command:
+
+```
+smsg rscs m nccmax chat /help
+```
+
+Similarly, a user of a remote NOS 2.8.7 system could ask for information about who is
+using `CONFER` on node `NCCMAX` by entering the following command:
+
+```
+NJMSG.CHAT@NCCMAX /SHOW
+```
+
 ### <a id="njf-vs-tlf"></a>NJF vs TLF
 Both NJF and TLF can send jobs from NOS 2.8.7 to other mainframes for execution, so
 why use one instead of the other? NJF uses the NJE protocol to communicate with other
 systems, and TLF uses the HASP protocol. NJE is a kind of HASP next generation. NJE
 establishes a symmetrical peer relationship between two participating systems, while
 HASP defines one participant to be a *station* and the other to be a *host*. NJE
-allows both participants to send jobs and/or files to each other, while HASP allows
-only a *station* to send jobs to a *host* and a *host* to send output to a *station*.
+allows both participants to send jobs, messages, and/or files to each other, while HASP
+allows only a *station* to send jobs to a *host* and a *host* to send output to a
+*station*, and HASP does not support messaging.
 
 Ordinarily, if two systems support NJE, they would not need to use HASP to communicate
 with each other too. However, the NJE implementations currently supported by MVS
@@ -692,6 +950,18 @@ MFLINK,lfn,ST=M02
 See [NOS 2 Reference Set Volume 3 System Commands](http://bitsavers.trailing-edge.com/pdf/cdc/Tom_Hunter_Scans/NOS_2_Reference_Set_Vol_3_System_Commands_60459680L_Dec88.pdf)
 for more details about the `ROUTE` and `MFLINK` commands.
 
+## <a id="tcpip"></a>TCP/IP Applications
+NOS 2.8.7 supports the TCP/IP data communication protocol suite and various client and server
+applications that use it. These include:
+
+- **DNS lookup utility**. Included in the *ncctcp* product provided by the Nostalgic Computing Center.
+- **FTP client and server**. Provided by CDC and included in the standard NOS 2.8.7 release materials.
+- **HTTP server**. Included in the *ncctcp* product provided by the Nostalgic Computing Center.
+- **REXEC client and server**. Included in the *ncctcp* product provided by the Nostalgic Computing Center.
+- **SMTP client and server**. Included in the *ncctcp* product provided by the Nostalgic Computing Center.
+
+See [TCP/IP Applications](TCPIP.md) for details.
+
 ## <a id="cray"></a>Cray Station
 NOS 2.8.7 supports the `Cray Station` subsystem (CRS), and this enables it to interact
 with a Cray supercomputer. The implementation in *DtCyber* interoperates with Andras
@@ -731,6 +1001,98 @@ the `site.cfg` file
 executing the command `reconfigure` at the `Operator>` prompt. Otherwise, run the
 tool by executing the command `node reconfigure`.
 
+### <a id="cos-tools"></a>COS Tools
+NOS 2.8.7 supports an optionally installed product named `cos-tools`. This product is _not_
+installed by default. It requires _Cray Station_ to be installed, configured, activated, and
+connected to a Cray X-MP system running COS 1.17.
+
+Use the `install-product.js` tool to install the `cos-tools` product. If *DtCyber* was
+started using `node start`, run the `install-product.js` tool by executing the command
+`install -f cos-tools` at the `Operator>` prompt. Otherwise, run the tool by executing the
+command `node install-product -f cos-tools`.
+
+Installing `cos-tools` causes the following to occur:
+
+- A collection of tools and utilities (see details, below) is installed on the connected
+Cray X-MP system.
+- A CCL procedure library named `CRAY` is saved in the catalog of user INSTALL. This
+library contains handy procedures for performing tasks such as transferring files to the
+Cray X-MP system, installing software there, assembling/compiling programs there, etc. Further details are provided, below.
+- A CCL procedure library named `CRAY` is saved in the LIBRARY catalog. This library is
+a subset of the one installed in INSTALL's catalog. However, it is publicly available to all
+other users of the NOS 2.8.7 system.
+
+The COS 1.17 operating system image provided with Andras Tantos'
+[Cray-XMP emulator](https://github.com/andrastantos/cray-sim) was recovered from a physical
+disk originally installed on an actual Cray X-MP computer. This is the only surviving COS 1.17
+image currently known to exist. It includes the base operating system. Unfortunately, it does
+not include any programming language compilers, and it also lacks many useful commands
+supported by COS.
+
+The `cos-tools` product provides reproductions of many of these missing features. These
+reproductions originate from the GitHub [COS Tools](https://github.com/kej715/COS-Tools)
+repository. The tools and utilities installed by `cos-tools` on the Cray X-MP system include:
+
+- __CAL__ : Cray Assembly Language assembler
+- __DASM__ : a disassembler
+- __KFTC__ : FORTRAN 77 compiler
+- __LDR__ : linking loader
+- __LIB__ : library manager
+- __CHARGES__ : utility run automatically by COS at the end of each job to report resource consumption information
+- __COPYD__ : copies blocked datasets
+- __COPYF__ : copies files of blocked datasets
+- __COPYR__ : copies records of blocked datasets
+- __NOTE__ : writes text to a dataset
+- __SKIPD__ : skips blocked datasets
+- __SKIPF__ : skips files of blocked datasets
+- __SKIPR__ : skips records of blocked datasets
+
+Visit the [COS Tools](https://github.com/kej715/COS-Tools) repository for additional details.
+
+The `CRAY` CCL procedure library installed in the catalog of INSTALL includes the following
+interactive CCL procedures:
+
+- __AUDIT__ : produces a listing of all permanent files stored on the Cray X-MP system
+- __CAL__ : assembles, links, and executes an assembly language program on the Cray X-MP system
+- __DELETE__ : deletes a permanent file stored on the Cray X-MP system
+- __FTN__ : compiles, links, and executes a FORTRAN 77 program on the Cray X-MP system
+- __INSTALL__ : installs an executable file as a command on the Cray X-MP system
+- __QGET__ : retrieves a file from the NOS wait queue and converts it from 8/12 ASCII encoding to 6/12 extended display code
+- __REPLACE__ : replaces a permanent file on the Cray X-MP system
+- __RUN__ : transfers an executable file to the Cray X-MP system and runs it there
+- __SAVE__ : saves a permanent file on the Cray X-MP system
+
+The `CRAY` CCL procedure library installed in the LIBRARY catalog includes the __CAL__,
+__FTN__, and __QGET__ procedures described above.
+
+For example, after installing the `cos-tools` product, a file on NOS 2.8.7 named `HELLO` containing a FORTRAN 77 program may be sent to the Cray X-MP system to be compiled and
+executed there by entering the following NOS command:
+
+```
+BEGIN,FTN,CRAY,I=HELLO.
+```
+
+This will submit a job to the Cray X-MP, and the job's output will be returned to the user's
+wait queue. The output may be retrieved from the wait queue and converted to 6/12 Extended
+Display Code by entering:
+
+```
+BEGIN,QGET,CRAY,<jsn>.
+```
+
+where *&lt;jsn&gt;* is the JSN of the output file returned to the wait queue.
+
+#### install-cos-tool
+Due to an intermittent bug not yet resolved, files sent from NOS to COS occasionally arrive
+on COS in a corrupted state. After installing the `cos-tools` product, if an attempt to
+execute one of the COS tools listed above results in COS reporting `BLOCK NUMBER ERROR`, this
+is an indication that the bug has occurred. A reliable workaround is to reinstall the
+corrupted tool, and this can be accomplished easily using the `install-cos-tool.js` tool.
+
+If *DtCyber* was started using `node start`, run the `install-cos-tool.js` tool by executing
+the command `!node install-cos-tool toolname` at the `Operator>` prompt. Otherwise, run the tool by executing the command `node install-cos-tool toolname`. In either of these cases,
+*toolname* is the name of the tool to be re-installed (e.g., __cal__ or __kftc__).
+
 ## <a id="shutdown"></a>Shutdown and Restart
 When the installation completes, NOS 2.8.7 will be running, and the command window will
 be left at the DtCyber `Operator> ` prompt. Enter the `exit` command or the `shutdown`
@@ -763,6 +1125,7 @@ configuration parameters to the UMass Mailer and e-mail routing system.
 See [UMass Mailer](#mailer) for details.
 - `make_ds_tape` (alias `mdt`) : creates a new deadstart tape that includes products
 installed by `install_product`.
+- `modopl` : applies all local modifications to the NOS system source library, `OPL871`. This command is particularly useful when new operating system modifications have been added to the DtCyber repository, and you want to update a previously installed system to include them.
 - `njf_configure` (alias `njfc`) : applies the NJE topology definition and customized
 configuration parameters to the system. See [Network Job Entry](#nje) for details.
 - `reconfigure` (alias `rcfg`) : applies all customized system configuration
@@ -846,7 +1209,7 @@ deadstart tape. However, you may re-install them (e.g., after customization), if
 
 | Product | Description |
 |---------|-------------|
-| [cybis](https://www.dropbox.com/s/jiythdoifn1f6bm/cybis-bin.tap?dl=1)                         | Cyber Instructional System                     |
+| [cybis-base](https://www.dropbox.com/s/jiythdoifn1f6bm/cybis-bin.tap?dl=1)                         | The base Cyber Instructional System                     |
 | [cybis-lessons](https://drive.google.com/drive/u/0/folders/1SY86n39EfFrX3T8scaoltRr_XMjjZiAb) | Additonal lesson content and patches for CYBIS |
 
 ### Category *database*
@@ -863,15 +1226,29 @@ This category includes data communication software.
 | Product | Description |
 |---------|-------------|
 | [confer](https://www.dropbox.com/s/y2yumlzqjc4qva8/massmail.tap?dl=1) | UMass multi-user CONFERencing application |
+| [cos-tools](https://www.dropbox.com/scl/fi/4wisss3zo5ydnpagk50ko/cos-tools.tap?rlkey=t9qtypvv6u1bjt6yfljnq2i71&dl=1) | Programming tools and utilities for COS 1.17 (Cray Operating System) |
 | [crs](https://www.dropbox.com/s/olr1hz6ys5mavjt/cray-station.tap?dl=1) | Cray Station subsystem |
 | [kermit](https://www.dropbox.com/s/p819tmvs91veoiv/kermit.tap?dl=1) | Kermit file exchange utility |
 | [mailer](https://www.dropbox.com/s/y2yumlzqjc4qva8/massmail.tap?dl=1) | UMass Mailer, base e-mail system |
+| nccnje  | Messaging service extensions for `njf` |
 | [ncctcp](https://www.dropbox.com/s/m172wagepk3lig6/ncctcp.tap?dl=1) | TCP/IP Applications (HTTP, NSQUERY, REXEC, SMTP) |
 | [netmail](https://www.dropbox.com/s/y2yumlzqjc4qva8/massmail.tap?dl=1) | UMass Mailer, network mail router |
 | [njf](https://www.dropbox.com/s/oejtd05qkvqhk9u/NOSL700NJEF.tap?dl=1) | Network Job Facility |
 | rbf5    | Remote Batch Facility Version 5 |
 | rhp     | Remote Host Products (QTF/PTF)  |
 | [tlf](https://www.dropbox.com/s/r5qbucmw6qye8vl/tieline.tap?dl=1) | TieLine Facility |
+
+### Category *games*
+This category includes games. In most cases, the games run on the system console. In some
+cases (e.g., Chess games), the games can also be run at an ordinary user terminal.
+
+| Product  | Description |
+|----------|-------------|
+| cgames   | NOS Console Games (EYE, KAL, LIFE, LUNAR, MIC, PAC, SNK, TTT) |
+| [chess30](https://www.dropbox.com/scl/fi/8hkccuwebfa8ebzq82130/chess30.tap?rlkey=m06hk1pg6oy50et1679p22pew&dl=1) | CHESS 3.0 - [historic Chess game](https://www.chessprogramming.org/Chess_%28Program%29) |
+| [chess35](https://www.dropbox.com/scl/fi/iomq72j2f67vibltpefzx/chess35.tap?rlkey=qnxgybhq5l60wkzhqiil6to2n&dl=1) | CHESS 3.5 - [historic Chess game](https://www.chessprogramming.org/Chess_%28Program%29) |
+| [chess46](https://www.dropbox.com/scl/fi/amc8hurdu7q5ijx9yy85w/chess46.tap?rlkey=5jinr6rzowzk2p43lzhdtcbok&dl=1) | CHESS 4.6 - [historic Chess game](https://www.chessprogramming.org/Chess_%28Program%29) |
+| [chess49](https://www.dropbox.com/scl/fi/4kuwf7keau3z0ff1tdn5d/chess49.tap?rlkey=uq9b5x9la3twuiiwpkae6trhr&dl=1) | CHESS 4.9 - [historic Chess game](https://www.chessprogramming.org/Chess_%28Program%29) |
 
 ### Category *graphics*
 This category includes graphics and CAD/CAM software.
@@ -904,7 +1281,6 @@ category.
 
 | Product | Description |
 |---------|-------------|
-| cgames  | NOS Console Games (EYE, KAL, LIFE, LUNAR, MIC, PAC, SNK, TTT) |
 | [i8080](https://www.dropbox.com/s/ovgysfxbgpl18am/i8080.tap?dl=1) | Intel 8080 tools (CPM80, INTRP80, MAC80, PLM80) |
 | skedulr | Task scheduler (similar to *cron* in Linux/Unix systems) |
 | [spss](https://www.dropbox.com/s/2eo63elqvhi0vwg/NOSSPSS6000V9.tap?dl=1) | SPSS-6000 V9 - Statistical Package for the Social Sciences |
@@ -995,6 +1371,28 @@ In case a basic installation is interrupted before completing successfully, use 
 |--------------|------------------------------------|
 | Linux/MacOS: | `sudo node install basic continue` |
 | Windows:     | `node install basic continue`      |
+
+## <a id="upgrade875"></a>Upgrading Cyber 865 to Cyber 875
+The `basic` and `full` installation options create systems that run on a Cyber 865 machine
+with a full complement of central memory (1M words). Ordinarily, this is sufficient for
+most hobbyist usage. A Cyber 875, however, can be configured with four times as
+much central memory as a Cyber 865 (4M words vs 1M words). In cases where CYBIS will be
+running and/or it is desirable to support a large number of concurrent batch and/or
+interactive jobs, a Cyber 875 will probably deliver better performance than an 865.
+
+It is possible to upgrade a Cyber 865 image to a Cyber 875 image by running the
+`upgrade-to-875` tool, as in:
+
+| OS           | Commands                   |
+|--------------|----------------------------|
+| Linux/MacOS: | `sudo node upgrade-to-875` |
+| Windows:     | `node upgrade-to-875`      |
+
+Run this tool when *DtCyber* is **not** already running. The tool will modify the
+*DtCyber* and NOS 2.8.7 configurations to run on a Cyber 875. In the process of making
+the necessary changes, it will deadstart the machine a couple of times, and it will leave
+the system running as a Cyber 875. Subsequent deadstarts will bring the system up as a
+Cyber 875 as well.
 
 ## <a id="reconfig"></a>Customizing the NOS 2.8.7 Configuration
 Various parameters of the NOS 2.8.7 system configuration may be changed or added to
@@ -1170,6 +1568,34 @@ Example:
 	files will be sent when the route to a destination cannot be calculated
 	automatically using the [topology file](files/nje-topology.json).
     
+- <a id="haspPorts"></a>**haspPorts** : Specifies the range of CLA ports that will be
+used in defining additional HASP terminals for use by RBF in the NOS NDL. The general
+syntax of this entry is:
+
+    haspPorts=*cla-port-number*,*port-count*
+    
+    Where *cla-port-number* is the number of the first CLA port to be used, and
+    *port-count* defines the maximum number of ports to be used. The default is
+    equivalent to:
+    
+    `haspPorts=0x26,2`
+    
+- <a id="haspTerminal"></a>**haspTerminal** : Defines the name and connection information
+for a HASP terminal. Two generic HASP terminals are defined in the base system, and this
+entry allows you to define additional ones. The general syntax of this entry is:
+
+    haspTerminal=*username*,*tcp-port*[,B*block-size*]
+    
+    | Parameter  | Description |
+    |------------|-------------|
+    | username   | The username associated with the terminal. |
+    | tcp-port   | The TCP port on which DtCyber will listen for connections to this terminal. |
+    | block-size | Optional block size, in bytes, to use in communicating with peers. The default is 400. |
+
+    Example:
+    
+    `haspTerminal=MOE,2555`
+    
 - <a id="hostID"></a>**hostID** : Specifies the 1 - 8 character node name of the local
 host. Example:
 
@@ -1251,6 +1677,26 @@ NOS 2.8.7 systems to exchange jobs and files. The general syntax of this entry i
 	Note that multiple *peername*/*cla-port* pairs may be defined to indicate that a node
 is connected to multiple peers.
 
+- <a id="safNode"></a>**safNode** : Defines the name and routing information for a
+*store-and-forward* node. A store-and-forward node is a node that is reached by forwarding
+files to an adjacent node serving as an intermediate relay. Ordinarily, the relay node
+is an RHP node defined in an [rhpNode](#rhpNode) entry. Often, the store-and-forward node
+is a TLF node or a Cray station directly connected to the relay node.
+
+	The general syntax of this entry is:
+
+    safNode=*nodename*,*relay-node*,*lid*
+
+    | Parameter     | Description |
+    |---------------|-------------|
+    | nodename      | The name assigned to the store-and-forward node. |
+    | relay-node    | The name assigned to the intermediate relay node through which the sotre-and-forward node is reached. |
+    | lid           | The unique, 3-character logical identifier assigned to the store-and-forward node. |
+
+    Example:
+    
+    `safNode=NCCCMS,NCCMIN,CMS`
+    
 - <a id="smtpDomain"></a>**smtpDomain** : Identifies an internet domain name or suffix
 to which e-mail will be routed using the TCP/IP SMTP protocol. Examples:
 
@@ -1263,15 +1709,33 @@ to which e-mail will be routed using the TCP/IP SMTP protocol. Examples:
 
 - <a id="stkDrivePath"></a>**stkDrivePath** : Defines the path of the first automated
 cartridge tape drive used by this NOS 2.8.7 system on the StorageTek 4400 tape server.
+Optionally, also devices the TCP port on which the tape server listens for connections.
+The general syntax of the entry is:
+
+    stkDrivePath=[*tcp-port*/]M*module*P*panel*D*drive*
+    
+    | Parameter | Description |
+    |-----------|-------------|
+    | tcp-port  | The TCP port on which the StorageTek 4400 tape server listens for connections. Ths parameter is optional, and the default is 4400 |
+    | module | The module number of the first tape drive used by this system (0 - 17 octal) |
+    | panel  | The panel number of the first tape drive used by this system (0 - 13 octal) |
+    | drive  | The drive number of the first tape drive used by this system (0 - 3) |
+
 The default is:
 ```
-    M0P0D0
+    stkDrivePath=4400/M0P0D0
 ```
-meaning Module 0, Panel 0, Drive 0. The module, panel, and drive numbers are octal
-values. Module numbers may range between 0 and 17, panel numbers may range between
-0 and 13, and drive numbers may range between 0 and 3.
+meaning the tape server listens for connections on TCP port 4400, and the first automated
+cartridge tape drive used by this system is Module 0, Panel 0, Drive 0. The module, panel,
+and drive numbers are octal values. Module numbers may range between 0 and 17, panel
+numbers may range between 0 and 13, and drive numbers may range between 0 and 3.
 
-	When a StorageTek 4400 tape server is shared amongst a set of NOS 2.8.7 systems in an
+The host on which the StorageTek 4400 tape server is running is defined by an entry in
+the NOS 2.8.7 TCPHOST file, located in the catalog of user NETADMN. The entry having a
+host alias **STK** identifies the host where the tape server is running. The default
+is the local host (i.e., the host on which *DtCyber* itself is running). See also [[HOSTS]](#hosts) because this section, when present, defines the contents of the TCPHOST file.
+
+When a StorageTek 4400 tape server is shared amongst a set of NOS 2.8.7 systems in an
 RHP network, each system in the network needs to have a unique drive path (i.e.,
 systems may share the tape server as a whole and its library of tapes, but they can not
 share individual tape drives). Typically, it is sufficient to assign a unique
@@ -1311,6 +1775,78 @@ entry is:
     equivalent to:
     
     `tlfPorts=0x28,8`
+
+### <a id="passwords"></a>[PASSWORDS]
+Enables passwords of user accounts in the NOS 2.8.7 system to be re/defined. Each line of
+this section specifies a username and the password to be defined for it. The general syntax
+of each line is:
+
+*username*=*password*
+
+The following example illustrates how the section can be used to customize the passwords
+associated with usernames in a system. All of the usernames defined in a full, ready-to-run
+system are shown along with the default passwords defined for each of them. To redefine
+the passwords used in an installed system, you may copy this example to a `[PASSWORDS]`
+section in your `site.cfg` file, edit the passwords that you want to change, then run
+the `reconfigure.js` tool to change the edited passwords while the system is running.
+
+Additionally, if a `[PASSWORDS]` section occurs in a `site.cfg` file that exists when a
+ready-to-run system is first installed using the `install.js` tool with the `rtr` option,
+the indicated password changes will be applied when `install.js` calls `reconfigure.js`
+implicitly. Furthermore, if you use `install.js` to install a system from scratch (i.e., by
+specifying the `full` option), the customized passwords will be applied during the scratch
+installation.
+
+Example:
+```
+[PASSWORDS]
+BCSCRAY=CRAYOPN
+CDCS=CDCS
+CYBIS=CYBIS
+CYBISMF=CYBISMF
+DBCNTLX=DBCNTLX
+GUEST=GUEST
+INSTALL=INSTALL
+NETADMN=NETADMN
+NETOPS=NETOPSX
+MAILER=MAILER
+NJF=NJFX
+PLATO=PLATO
+PLATOMF=PLATOMF
+PRINT01=PRINT01
+PRINT02=PRINT02
+PRINT03=PRINT03
+PRINT04=PRINT04
+PRINT05=PRINT05
+PRINT06=PRINT06
+PRINT07=PRINT07
+PRINT08=PRINT08
+PRINT09=PRINT09
+PRINT10=PRINT10
+PRINT11=PRINT11
+PRINT12=PRINT12
+PRINTS=PRINTS
+REXEC=REXECX
+RJE1=RJE1
+RJE2=RJE2
+SES=SESX
+SYS=SYSX
+SYSTEMX=SYSTEMX
+TIELINE=TIELINE
+WWW=WWWX
+```
+
+Note that the following usernames are associated with user indices having values greater than or equal to 377770B.
+The system does not allow users to log into these accounts interactively, nor can they be used for running ordinary
+batch jobs. A job may be run from these usernames only if it is initiated from the system console as a system origin job.
+Consequently, there is little to be gained from changing the passwords of these accounts.
+
+```
+CYBISMF
+NETOPS
+PLATOMF
+SYSTEMX
+```
 
 ### <a id="resolver"></a>[RESOLVER]
 Defines the TCP/IP resource resolver configuration. This is saved as the file named

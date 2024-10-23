@@ -86,7 +86,12 @@ void cdcnetShowStatus(void);
 /*
 **  console.c
 */
+void consoleCloseRemote(void);
+void consoleCloseWindow(void);
 void consoleInit(u8 eqNo, u8 unitNo, u8 channelNo, char *deviceName);
+bool consoleIsRemoteActive(void);
+void consoleOpenWindow(void);
+void consoleShowStatus(void);
 
 /*
 **  cpu.c
@@ -239,7 +244,9 @@ void logError(char *file, int line, char *fmt, ...);
 /*
 **  main.c
 */
-int runHelper(char* command);
+int  runHelper(char* command);
+void startHelpers(void);
+void stopHelpers(void);
 
 /*
 **  maintenance_channel.c
@@ -303,9 +310,16 @@ void mux6676Init(u8 eqNo, u8 unitNo, u8 channelNo, char *deviceName);
 void mux6676ShowStatus();
 
 /*
+** cci_hip.c
+*/
+void cciHipTerminate(DevSlot *dp);
+void cciInit(u8 eqNo, u8 unitNo, u8 channelNo, char *deviceName);
+
+/*
 **  net_util.c
 */
 #if defined(_WIN32)
+SOCKET netAcceptConnection(SOCKET sd);
 void   netCloseConnection(SOCKET sd);
 SOCKET netCreateListener(int port);
 SOCKET netCreateSocket(int port, bool isReuse);
@@ -314,6 +328,7 @@ char  *netGetLocalTcpAddress(SOCKET sd);
 char  *netGetPeerTcpAddress(SOCKET sd);
 SOCKET netInitiateConnection(struct sockaddr *sap);
 #else
+int    netAcceptConnection(int sd);
 void   netCloseConnection(int sd);
 int    netCreateListener(int port);
 int    netCreateSocket(int port, bool isReuse);
@@ -339,6 +354,7 @@ void niuShowStatus();
 */
 void npuInit(u8 eqNo, u8 unitNo, u8 channelNo, char *deviceName);
 int npuBipBufCount(void);
+bool npuBipIsBusy(void);
 void npuNetShowStatus();
 
 /*
@@ -430,8 +446,6 @@ void windowSetFont(u8 font);
 void windowSetX(u16 x);
 void windowSetY(u16 y);
 void windowQueue(u8 ch);
-void windowUpdate(void);
-void windowGetChar(void);
 void windowTerminate(void);
 
 /*
@@ -475,6 +489,7 @@ extern bool                emulationActive;
 extern const char          extBcdToAscii[64];
 extern u32                 extMaxMemory;
 extern CpWord              *extMem;
+extern ExtMemory           extMemType;
 extern ModelFeatures       features;
 extern ModelType           modelType;
 extern u16                 mux6676TelnetConns;
@@ -486,6 +501,7 @@ extern u32                 npuNetHostIP;
 extern u16                 npuNetTcpConns;
 extern u16                 npuNetTelnetPort;
 extern u8                  npuSvmCouplerNode;
+extern NpuSoftware         npuSw;
 extern u8                  npuSvmNpuNode;
 extern char                *npuSvmTermStates[];
 extern volatile bool       opActive;
@@ -501,12 +517,14 @@ extern PpSlot              *ppu;
 extern u8                  ppuCount;
 extern u32                 readerScanSecs;
 extern u32                 rtcClock;
+extern bool                rtcClockIsCurrent;
 extern u32                 traceMask;
 extern u32                 traceSequenceNo;
 
 /* Idle Loop throttle */
 extern bool idle;
 extern bool (*idleDetector)(CpuContext *ctx);
+extern u32  idleNetBufs;
 extern u32  idleTime;
 extern u32  idleTrigger;
 extern char ipAddress[];

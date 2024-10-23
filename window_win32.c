@@ -116,10 +116,12 @@ void windowDisplay(HWND hWnd);
 **  -----------------
 */
 static u8          currentFont;
-static i16         currentX = -1;
-static i16         currentY = -1;
+static i16         currentX              = -1;
+static i16         currentY              = -1;
+static bool        displayActive         = FALSE;
 static DispList    display[ListSize];
 static u32         listEnd;
+static HANDLE      hThread;
 static HWND        hWnd;
 static HFONT       hSmallFont            = 0;
 static HFONT       hMediumFont           = 0;
@@ -146,9 +148,7 @@ static BOOL        shifted               = FALSE;
 void windowInit(void)
     {
     DWORD  dwThreadId;
-    HANDLE hThread;
     int    thPriority = 0;
-
 
     /*
     **  Create display list pool.
@@ -186,6 +186,8 @@ void windowInit(void)
             exit(1);
             }
         }
+
+    displayActive = TRUE;
     }
 
 /*--------------------------------------------------------------------------
@@ -264,30 +266,6 @@ void windowQueue(u8 ch)
     }
 
 /*--------------------------------------------------------------------------
-**  Purpose:        Update window.
-**
-**  Parameters:     Name        Description.
-**
-**  Returns:        Nothing.
-**
-**------------------------------------------------------------------------*/
-void windowUpdate(void)
-    {
-    }
-
-/*--------------------------------------------------------------------------
-**  Purpose:        Poll the keyboard (dummy for X11)
-**
-**  Parameters:     Name        Description.
-**
-**  Returns:        Nothing
-**
-**------------------------------------------------------------------------*/
-void windowGetChar(void)
-    {
-    }
-
-/*--------------------------------------------------------------------------
 **  Purpose:        Terminate console window.
 **
 **  Parameters:     Name        Description.
@@ -297,8 +275,12 @@ void windowGetChar(void)
 **------------------------------------------------------------------------*/
 void windowTerminate(void)
     {
-    SendMessage(hWnd, WM_DESTROY, 0, 0);
-    Sleep(100);
+    if (displayActive)
+        {
+        SendMessage(hWnd, WM_DESTROY, 0, 0);
+        WaitForSingleObject(hThread, INFINITE);
+        displayActive = FALSE;
+        }
     }
 
 /*
@@ -891,6 +873,14 @@ void windowDisplay(HWND hWnd)
         oldFont = FontLarge;
         TextOut(hdcMem, (0 * ScaleX) / 10, (256 * ScaleY) / 10, opMessage, strlen(opMessage));
         }
+    else if (consoleIsRemoteActive())
+        {
+        static char opMessage[] = "Remote console active";
+        hfntOld = SelectObject(hdcMem, hLargeFont);
+        oldFont = FontLarge;
+        TextOut(hdcMem, (0 * ScaleX) / 10, (256 * ScaleY) / 10, opMessage, strlen(opMessage));
+        }
+
 
     SelectObject(hdcMem, hPen);
 

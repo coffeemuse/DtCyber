@@ -8,6 +8,8 @@ const baseTapes = ["ds.tap", "nos287-1.tap", "nos287-2.tap", "nos287-3.tap"];
 
 const dtc = new DtCyber();
 
+const customProps = utilities.getCustomProperties(dtc);
+
 let isContinueInstall = false;
 
 for (let arg of process.argv.slice(2)) {
@@ -121,7 +123,67 @@ if (isCompletedStep("sysgen-full") === false) {
   });
 }
 
+if (isCompletedStep("sysgen-source") === false) {
+  promise = promise
+  .then(() => dtc.say("Start SYSGEN(SOURCE) ..."));
+  if (isMountTapes === false) {
+    isMountTapes = true;
+    promise = promise
+    .then(() => dtc.mount(13, 0, 1, "tapes/nos287-1.tap"))
+    .then(() => dtc.mount(13, 0, 2, "tapes/nos287-2.tap"))
+    .then(() => dtc.mount(13, 0, 3, "tapes/nos287-3.tap"));
+  }
+  promise = promise
+  .then(() => dtc.dsd("[X.SYSGEN(SOURCE)"))
+  .then(() => dtc.expect([ {re:/E N D   S O U R C E/} ], "printer"))
+  .then(() => dtc.say("SYSGEN(SOURCE) complete"))
+  .then(() => {
+    addCompletedStep("sysgen-source");
+    return Promise.resolve();
+  });
+}
+
+if (isCompletedStep("update-passwords") === false) {
+  const systemxPw = utilities.getPropertyValue(customProps, "PASSWORDS", "SYSTEMX", "SYSTEMX");
+  const installPw = utilities.getPropertyValue(customProps, "PASSWORDS", "INSTALL", "INSTALL");
+  const netadmnPw = utilities.getPropertyValue(customProps, "PASSWORDS", "NETADMN", "NETADMN");
+  promise = promise
+  .then(() => {
+    return (systemxPw === "SYSTEMX")
+           ? Promise.resolve()
+           : dtc.say("Update password of SYSTEMX ...")
+             .then(() => dtc.dsd(`X.MODVAL(OP=Z)/SYSTEMX,PW=${systemxPw}`));
+  })
+  .then(() => dtc.say("Update privileges of INSTALL ..."))
+  .then(() => {
+    return (installPw === "INSTALL")
+           ? dtc.dsd("X.MODVAL(OP=Z)/INSTALL,AP=CONFER")
+           : dtc.dsd(`X.MODVAL(OP=Z)/INSTALL,PW=${installPw},AP=CONFER`);
+  })
+  .then(() => {
+    return (netadmnPw === "NETADMN")
+           ? Promise.resolve()
+           : dtc.say("Update password of NETADMN ...")
+             .then(() => dtc.dsd(`X.MODVAL(OP=Z)/NETADMN,PW=${netadmnPw}`));
+  })
+  .then(() => {
+    if (typeof customProps["PASSWORDS"] !== "undefined") {
+      return dtc.say("Update ZZSYSGU ...")
+      .then(() => dtc.dsd("X.PERMIT(ZZSYSGU,INSTALL=W)"))
+      .then(() => dtc.runJob(12, 4, "decks/update-zzsysgu.job"));
+    }
+    else {
+      return Promise.resolve();
+    }
+  })
+  .then(() => {
+    addCompletedStep("update-passwords");
+    return Promise.resolve();
+  });
+}
+
 if (isCompletedStep("nam-init") === false) {
+  const netopsPw = utilities.getPropertyValue(customProps, "PASSWORDS", "NETOPS", "NETOPSX");
   promise = promise
   .then(() => dtc.say("Create and compile the NDL file ..."))
   .then(() => dtc.runJob(12, 4, "decks/create-ndlopl.job"))
@@ -132,11 +194,11 @@ if (isCompletedStep("nam-init") === false) {
   .then(() => dtc.say("Create the TCPHOST file ..."))
   .then(() => dtc.runJob(12, 4, "decks/create-tcphost.job"))
   .then(() => dtc.say("Set NETOPS password and security count ..."))
-  .then(() => dtc.dsd("X.MODVAL(OP=Z)/NETOPS,PW=NETOPSX,SC=77B"))
+  .then(() => dtc.dsd(`X.MODVAL(OP=Z)/NETOPS,PW=${netopsPw},SC=77B`))
   .then(() => dtc.say("Start NAMNOGO to initialize NAM ..."))
   .then(() => dtc.dsd("NANOGO."))
   .then(() => dtc.sleep(5000))
-  .then(() => dtc.dsd("CFO,NAM.UN=NETOPS,PW=NETOPSX"))
+  .then(() => dtc.dsd(`CFO,NAM.UN=NETOPS,PW=${netopsPw}`))
   .then(() => dtc.sleep(1000))
   .then(() => dtc.dsd("CFO,NAM.GO"))
   .then(() => {
@@ -167,26 +229,6 @@ if (isCompletedStep("add-guest") === false) {
   ], "GESTMDV", 1))
   .then(() => {
     addCompletedStep("add-guest");
-    return Promise.resolve();
-  });
-}
-
-if (isCompletedStep("sysgen-source") === false) {
-  promise = promise
-  .then(() => dtc.say("Start SYSGEN(SOURCE) ..."));
-  if (isMountTapes === false) {
-    isMountTapes = true;
-    promise = promise
-    .then(() => dtc.mount(13, 0, 1, "tapes/nos287-1.tap"))
-    .then(() => dtc.mount(13, 0, 2, "tapes/nos287-2.tap"))
-    .then(() => dtc.mount(13, 0, 3, "tapes/nos287-3.tap"));
-  }
-  promise = promise
-  .then(() => dtc.dsd("[X.SYSGEN(SOURCE)"))
-  .then(() => dtc.expect([ {re:/E N D   S O U R C E/} ], "printer"))
-  .then(() => dtc.say("SYSGEN(SOURCE) complete"))
-  .then(() => {
-    addCompletedStep("sysgen-source");
     return Promise.resolve();
   });
 }
@@ -224,7 +266,11 @@ if (fs.existsSync("site.cfg") && isCompletedStep("site-config") === false) {
   promise = promise
   .then(() => dtc.say("Apply site configuration (site.cfg) ..."))
   .then(() => dtc.disconnect())
-  .then(() => dtc.exec("node", ["reconfigure"]));
+  .then(() => dtc.exec("node", ["reconfigure", "-pw"]))
+  .then(() => {
+    addCompletedStep("site-config");
+    return Promise.resolve();
+  });
 }
 
 promise = promise

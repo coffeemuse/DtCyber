@@ -32,9 +32,9 @@
 **  ----------------
 */
 #ifdef _DEBUG
-#define DtCyberVersion      "Desktop CYBER 5.7.44 (Debug)   "
+#define DtCyberVersion      "Desktop CYBER 5.7.54 (Debug)   "
 #else
-#define DtCyberVersion      "Desktop CYBER 5.7.44 (Release) "
+#define DtCyberVersion      "Desktop CYBER 5.7.54 (Release) "
 #endif
 
 #define DtCyberBuildDate    __DATE__ " " __TIME__
@@ -117,6 +117,7 @@
 #define DtMux6671                  29
 #define DtDsa311                   30
 #define DtMSUFrend                 31
+#define DtHcp                      32
 
 /*
 **  Special channels.
@@ -158,6 +159,11 @@
 #define MaxFSPath    4096       //  Go for the larger, Linux Default
 #endif
 
+/*
+**  Console Screen Ordinals and Offsets
+*/
+#define LeftScreen        0
+#define RightScreen       1
 
 #if CcLargeWin32Screen == 1
 #define OffLeftScreen     010
@@ -182,6 +188,7 @@
 #define Mask10                     01777
 #define Mask11                     03777
 #define Mask12                     07777
+#define Mask14                     037777
 #define Mask15                     077777
 #define Mask17                     0377777
 #define Mask18                     0777777
