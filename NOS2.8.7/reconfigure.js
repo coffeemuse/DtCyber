@@ -7,16 +7,37 @@ const utilities = require("./opt/utilities");
 
 const dtc = new DtCyber();
 
-let newHostID      = null;        // new network host identifier
-let newMID         = null;        // new machine identifer
-let oldHostID      = "NCCM01";    // old network host identifier
-let oldMID         = "01";        // old machine identifer
-let productRecords = [];          // textual records to edit into PRODUCT file
+let doRcfgPasswords = true;
 
-const customProps  = utilities.getCustomProperties(dtc);
-const iniProps     = dtc.getIniProperties(dtc);
-let   ovlProps     = {};
-let   newIpAddress = "127.0.0.1";
+for (let arg of process.argv.slice(2)) {
+  arg = arg.toLowerCase();
+  if (arg === "-pw") {
+    doRcfgPasswords = false;
+  }
+  else {
+    process.stderr.write(`Unrecognized argument: ${arg}\n`);
+    process.stderr.write("Usage: node reconfigure [-pw]\n");
+    process.exit(1);
+  }
+}
+
+let emEqOrdinal      = 6;           // ESM equipment ordinal
+let newHostID        = null;        // new network host identifier
+let newMID           = null;        // new machine identifer
+let oldHostID        = "NCCM01";    // old network host identifier
+let oldMID           = "01";        // old machine identifer
+let productRecords   = [];          // textual records to edit into PRODUCT file
+let updatedPasswords = [];          // list of passwords that have been updated
+
+const customProps    = utilities.getCustomProperties(dtc);
+const iniProps       = dtc.getIniProperties();
+let   ovlProps       = {};
+let   newIpAddress   = "127.0.0.1";
+let   passwordMap    = {};
+
+if (fs.existsSync("opt/password-map.json")) {
+  passwordMap = JSON.parse(fs.readFileSync("opt/password-map.json", "utf8"));
+}
 
 let oldCrsInfo = {
   lid:       "COS",
@@ -95,71 +116,97 @@ const processCmrdProps = () => {
  *  to be edited into the PRODUCT file, if any.
  */
 const processEqpdProps = () => {
-  if (typeof customProps["EQPDECK"] !== "undefined") {
+  if (typeof customProps["EQPDECK"] !== "undefined"
+      || (oldMID !== newMID && newMID !== null)) {
     return dtc.say("Edit EQPD01 ...")
     .then(() => utilities.getSystemRecord(dtc, "EQPD01"))
     .then(eqpd01 => {
-      for (const prop of customProps["EQPDECK"]) {
-        let ei = prop.indexOf("=");
-        if (ei < 0) {
-          throw new Error(`Invalid EQPDECK definition: \"${prop}\"`);
+      if (oldMID !== newMID && newMID !== null) {
+        //
+        //  Check for XM entry in existing equipment deck
+        //
+        let updatedDeck = [];
+        for (const line of eqpd01.split("\n")) {
+          if (line.startsWith("XM=")) {
+            let fields = line.split(",");
+            updatedDeck.push(`XM=${newMID},${fields.slice(1).join(",")}`);
+          }
+          else {
+            updatedDeck.push(line);
+          }
         }
-        let key   = prop.substring(0, ei).trim().toUpperCase();
-        let value = prop.substring(ei + 1).trim().toUpperCase();
-        let si = 0;
-        let isEQyet = false;
-        let isPFyet = false;
-        while (si < eqpd01.length) {
-          let ni = eqpd01.indexOf("\n", si);
-          if (ni < 0) ni = eqpd01.length - 1;
-          let ei = eqpd01.indexOf("=", si);
-          if (ei < ni && ei > 0) {
-            let eqpdKey = eqpd01.substring(si, ei).trim();
-            if (eqpdKey.startsWith("EQ")) {
-              isEQyet = true;
+        eqpd01 = updatedDeck.join("\n");
+      }
+      //
+      //  Edit equipment deck to include new/updated entries
+      //
+      
+      if (typeof customProps["EQPDECK"] !== "undefined") {
+        for (const prop of customProps["EQPDECK"]) {
+          let ei = prop.indexOf("=");
+          if (ei < 0) {
+            ei = prop.indexOf(",");
+            if (ei < 0) {
+              throw new Error(`Invalid EQPDECK definition: \"${prop}\"`);
             }
-            if (eqpdKey === "PF") {
-              isPFyet = true;
-            }
-            if (eqpdKey === key) {
-              if (key === "PF") {
-                let ci = value.indexOf(",");
-                if (ci < 0) {
-                  throw new Error(`Invalid EQPDECK definition: \"${prop}\"`);
+          }
+          let key   = prop.substring(0, ei).trim().toUpperCase();
+          let value = prop.substring(ei + 1).trim().toUpperCase();
+          let si = 0;
+          let isEQyet = false;
+          let isPFyet = false;
+          while (si < eqpd01.length) {
+            let ni = eqpd01.indexOf("\n", si);
+            if (ni < 0) ni = eqpd01.length - 1;
+            let ei = eqpd01.indexOf("=", si);
+            if (ei < ni && ei > 0) {
+              let eqpdKey = eqpd01.substring(si, ei).trim();
+              if (eqpdKey.startsWith("EQ")) {
+                isEQyet = true;
+              }
+              else if (eqpdKey === "PF") {
+                isPFyet = true;
+              }
+              if (eqpdKey === key) {
+                if (key === "PF") {
+                  let ci = value.indexOf(",");
+                  if (ci < 0) {
+                    throw new Error(`Invalid EQPDECK definition: \"${prop}\"`);
+                  }
+                  let propPFN = parseInt(value.substring(0, ci).trim());
+                  ci = eqpd01.indexOf(",", ei + 1);
+                  let eqpdPFN = parseInt(eqpd01.substring(ei + 1, ci).trim());
+                  if (propPFN === eqpdPFN) {
+                    eqpd01 = `${eqpd01.substring(0, si)}${key}=${value}\n${eqpd01.substring(ni + 1)}`;
+                    break;
+                  }
+                  else if (propPFN < eqpdPFN) {
+                    eqpd01 = `${eqpd01.substring(0, si)}${key}=${value}\n${eqpd01.substring(si)}`;
+                    break;
+                  }
                 }
-                let propPFN = parseInt(value.substring(0, ci).trim());
-                ci = eqpd01.indexOf(",", ei + 1);
-                let eqpdPFN = parseInt(eqpd01.substring(ei + 1, ci).trim());
-                if (propPFN === eqpdPFN) {
+                else {
                   eqpd01 = `${eqpd01.substring(0, si)}${key}=${value}\n${eqpd01.substring(ni + 1)}`;
                   break;
                 }
-                else if (propPFN < eqpdPFN) {
+              }
+              else if (isEQyet && key.startsWith("EQ") && !eqpdKey.startsWith("*")) {
+                if (!eqpdKey.startsWith("EQ")
+                    || parseInt(key.substring(2)) < parseInt(eqpdKey.substring(2))) {
                   eqpd01 = `${eqpd01.substring(0, si)}${key}=${value}\n${eqpd01.substring(si)}`;
                   break;
                 }
               }
-              else {
-                eqpd01 = `${eqpd01.substring(0, si)}${key}=${value}\n${eqpd01.substring(ni + 1)}`;
-                break;
-              }
-            }
-            else if (isEQyet && key.startsWith("EQ") && !eqpdKey.startsWith("*")) {
-              if (!eqpdKey.startsWith("EQ")
-                  || parseInt(key.substring(2)) < parseInt(eqpdKey.substring(2))) {
+              else if (isPFyet && key === "PF" && !eqpdKey.startsWith("*") && eqpdKey !== "REMOVE") {
                 eqpd01 = `${eqpd01.substring(0, si)}${key}=${value}\n${eqpd01.substring(si)}`;
                 break;
               }
             }
-            else if (isPFyet && key === "PF" && !eqpdKey.startsWith("*") && eqpdKey !== "REMOVE") {
-              eqpd01 = `${eqpd01.substring(0, si)}${key}=${value}\n${eqpd01.substring(si)}`;
-              break;
-            }
+            si = ni + 1;
           }
-          si = ni + 1;
-        }
-        if (si >= eqpd01.length) {
-          eqpd01 += `${key}=${value}\n`;
+          if (si >= eqpd01.length) {
+            eqpd01 += `${prop.toUpperCase()}\n`;
+          }
         }
       }
       productRecords.push(eqpd01);
@@ -215,6 +262,84 @@ const processNetworkProps = () => {
 };
 
 /*
+ * processPasswordChanges
+ *
+ * Process properties defined in PASSWORDS sections of property files. Detect passwords
+ * that have been updated since the last reconfiguration, and synchronize the associated
+ * password definitions and references in the running system.
+ *
+ * Returns:
+ *  A promise that is resolved when all password changes have been processed.
+ */
+const processPasswordChanges = () => {
+  if (doRcfgPasswords && typeof customProps["PASSWORDS"] !== "undefined") {
+    for (const pwDefn of customProps["PASSWORDS"]) {
+      let ei = pwDefn.indexOf("=");
+      if (ei > 0) {
+        let un = pwDefn.substring(0, ei).toUpperCase().trim();
+        let pw = pwDefn.substring(ei + 1).toUpperCase().trim();
+        if (typeof passwordMap[un] === "undefined" || passwordMap[un] !== pw) {
+          updatedPasswords.push(un);
+          passwordMap[un] = pw;
+        }
+      }
+    }
+    if (updatedPasswords.length > 0) {
+      const products = JSON.parse(fs.readFileSync("opt/products.json", "utf8"));
+      let installedProducts = [];
+      if (fs.existsSync("opt/installed.json")) {
+        installedProducts = JSON.parse(fs.readFileSync("opt/installed.json", "utf8"));
+      }
+      let processors = {};
+      for (const category of products) {
+        for (const prodDefn of category.products) {
+          if (typeof prodDefn.users !== "undefined" && utilities.isInstalled(prodDefn.name)) {
+            for (const un of Object.keys(prodDefn.users)) {
+              if (updatedPasswords.indexOf(un) >= 0) {
+                if (typeof processors[un] === "undefined") processors[un] = [];
+                processors[un] = processors[un].concat(prodDefn.users[un]);
+              }
+            }
+          }
+        }
+      }
+      let promise = dtc.say("Update passwords ...");
+      for (const un of updatedPasswords) {
+        promise = promise
+        .then(() => dtc.say(`  ${un}`))
+        .then(() => dtc.dsd(`X.MODVAL(OP=Z)/${un},PW=${passwordMap[un]}`));
+      }
+      for (const un of Object.keys(processors).sort()) {
+        for (const item of processors[un]) {
+          if (item.endsWith(".job")) {
+            promise = promise
+              .then(() => dtc.say(`Run job opt/${item} ...`))
+              .then(() => dtc.runJob(12, 4, `opt/${item}`));
+          }
+          else {
+            promise = promise
+            .then(() => dtc.say(`Run command "node opt/${item}" ...`))
+            .then(() => dtc.disconnect())
+            .then(() => dtc.exec("node", [`opt/${item}`]))
+            .then(() => dtc.connect())
+            .then(() => dtc.expect([ {re:/Operator> $/} ]));
+          }
+        }
+      }
+      return promise
+      .then(() => dtc.say("Update ZZSYSGU ..."))
+      .then(() => dtc.dsd("X.PERMIT(ZZSYSGU,INSTALL=W)"))
+      .then(() => dtc.runJob(12, 4, "decks/update-zzsysgu.job"))
+      .then(() => {
+        fs.writeFileSync("opt/password-map.json", JSON.stringify(passwordMap));
+        return Promise.resolve();
+      });
+    }
+  }
+  return Promise.resolve();
+};
+
+/*
  * replaceFile
  *
  * Replace a file on the running system.
@@ -235,6 +360,10 @@ const replaceFile = (filename, data, options) => {
   if (typeof options === "undefined") options = {};
   options.jobname = "REPFILE";
   options.data    = data;
+  if (typeof options.username === "undefined" && typeof options.user === "undefined") {
+    options.username = "INSTALL";
+    options.password = utilities.getPropertyValue(customProps, "PASSWORDS", "INSTALL", "INSTALL");
+  }
   return dtc.createJobWithOutput(12, 4, job, options);
 };
 
@@ -289,6 +418,8 @@ const updateProductRecords = () => {
     ];
     const options = {
       jobname: "UPDPROD",
+      username: "INSTALL",
+      password: utilities.getPropertyValue(customProps, "PASSWORDS", "INSTALL", "INSTALL"),
       data:    `${productRecords.join("~eor\n")}`
     };
     return dtc.say("Update PRODUCT ...")
@@ -323,7 +454,7 @@ const updateTcpHosts = () => {
   }
   else {
     return dtc.say("Update TCPHOST ...")
-    .then(() => utilities.getFile(dtc, "TCPHOST", {username:"NETADMN",password:"NETADMN"}))
+    .then(() => utilities.getFile(dtc, "TCPHOST", {username:"NETADMN",password:utilities.getPropertyValue(customProps, "PASSWORDS", "NETADMN", "NETADMN")}))
     .then(text => {
       let hosts = {};
       let pid = `M${oldMID.toUpperCase()}`;
@@ -369,12 +500,13 @@ const updateTcpHosts = () => {
       const job = [
         "$CHANGE,TCPHOST/CT=PU,M=R,AC=Y."
       ];
+      const netadmnPw = utilities.getPropertyValue(customProps, "PASSWORDS", "NETADMN", "NETADMN");
       const options = {
         jobname:  "MAKEPUB",
         username: "NETADMN",
-        password: "NETADMN"
+        password: netadmnPw
       };
-      return dtc.putFile("TCPHOST/IA", text, {username:"NETADMN",password:"NETADMN"})
+      return dtc.putFile("TCPHOST/IA", text, {username:"NETADMN",password:netadmnPw})
       .then(() => dtc.createJobWithOutput(12, 4, job, options));
     });
   }
@@ -394,13 +526,14 @@ const updateTcpResolver = () => {
     const job = [
       "$CHANGE,TCPRSLV/CT=PU,M=R,AC=Y."
     ];
+    const netadmnPw = utilities.getPropertyValue(customProps, "PASSWORDS", "NETADMN", "NETADMN");
     const options = {
       jobname: "MAKEPUB",
       username: "NETADMN",
-      password: "NETADMN"
+      password: netadmnPw
     };
     return dtc.say("Create/Update TCPRSLV ...")
-    .then(() => dtc.putFile("TCPRSLV/IA", `${customProps["RESOLVER"].join("\n")}\n`, {username:"NETADMN",password:"NETADMN"}))
+    .then(() => dtc.putFile("TCPRSLV/IA", `${customProps["RESOLVER"].join("\n")}\n`, {username:"NETADMN",password:netadmnPw}))
     .then(() => dtc.createJobWithOutput(12, 4, job, options));
   }
   else {
@@ -411,6 +544,8 @@ const updateTcpResolver = () => {
 dtc.connect()
 .then(() => dtc.expect([ {re:/Operator> $/} ]))
 .then(() => dtc.attachPrinter("LP5xx_C12_E5"))
+.then(() => dtc.console("idle off"))
+.then(() => processPasswordChanges())
 .then(() => processCmrdProps())
 .then(() => processEqpdProps())
 .then(() => processNetworkProps())
@@ -420,10 +555,13 @@ dtc.connect()
 .then(() => dtc.disconnect())
 .then(() => dtc.exec("node", ["opt/rhp-update-ndl"]))
 .then(() => {
-  return utilities.isInstalled("cybis") ? dtc.exec("node", ["opt/cybis-update-ndl"]) : Promise.resolve();
+  return utilities.isInstalled("cybis-base") ? dtc.exec("node", ["opt/cybis-update-ndl"]) : Promise.resolve();
 })
 .then(() => {
   return utilities.isInstalled("njf") ? dtc.exec("node", ["opt/njf-update-ndl"]) : Promise.resolve();
+})
+.then(() => {
+  return utilities.isInstalled("rbf5") ? dtc.exec("node", ["opt/rbf5-update-ndl"]) : Promise.resolve();
 })
 .then(() => {
   return utilities.isInstalled("tlf") ? dtc.exec("node", ["opt/tlf-update-ndl"]) : Promise.resolve();
@@ -432,6 +570,9 @@ dtc.connect()
 .then(() => dtc.exec("node", ["rhp-configure", "-ndl"]))
 .then(() => {
   return utilities.isInstalled("njf") ? dtc.exec("node", ["njf-configure", "-ndl"]) : Promise.resolve();
+})
+.then(() => {
+  return utilities.isInstalled("rbf5") ? dtc.exec("node", ["rbf-configure", "-ndl"]) : Promise.resolve();
 })
 .then(() => {
   return utilities.isInstalled("tlf") ? dtc.exec("node", ["tlf-configure", "-ndl"]) : Promise.resolve();
@@ -461,7 +602,8 @@ dtc.connect()
   if (utilities.isInstalled("crs") && typeof newCrsInfo.lid !== "undefined") {
     if (   oldCrsInfo.lid       !== newCrsInfo.lid
         || oldCrsInfo.stationId !== newCrsInfo.stationId
-        || oldCrsInfo.crayId    !== newCrsInfo.crayId) {
+        || oldCrsInfo.crayId    !== newCrsInfo.crayId
+        || updatedPasswords.indexOf("BCSCRAY") >= 0) {
       return dtc.say("Rebuild CRS ...")
       .then(() => dtc.exec("node", ["install-product","-f","crs"]));
     }
@@ -566,6 +708,7 @@ dtc.connect()
   // changed.
   //
   let oldStkHost     = "127.0.0.1";
+  let oldStkPort     = 4400;
   let oldStkModule   = 0;
   let oldStkPanel    = 0;
   let oldStkDrive    = 0
@@ -573,8 +716,11 @@ dtc.connect()
     for (const line of iniProps["equipment.nos287"]) {
       if (line.startsWith("MT5744,")) {
         let tokens    = line.split(",");
-        oldStkHost    = tokens[4].substring(0, tokens[4].indexOf(":"));
-        let drivePath = tokens[4].substring(tokens[4].indexOf("/") + 1);
+        let ci        = tokens[4].indexOf(":");
+        let si        = tokens[4].indexOf("/");
+        oldStkHost    = tokens[4].substring(0, ci);
+        oldStkPort    = parseInt(tokens[4].substring(ci + 1, si));
+        let drivePath = tokens[4].substring(si + 1);
         let match     = drivePath.match(/^M([0-7]+)P([0-7]+)D([0-7]+)$/);
         if (match !== null) {
           oldStkModule = parseInt(match[1], 8);
@@ -586,10 +732,12 @@ dtc.connect()
     }
   }
   let newStkHost = oldStkHost;
+  let newStkPort = oldStkPort;
   for (const ipAddress of Object.keys(hosts)) {
     for (const name of hosts[ipAddress]) {
       if (name.toUpperCase() === "STK") {
         newStkHost = ipAddress;
+        if (newStkHost !== oldStkHost) newStkPort = 4400;
         break;
       }
     }
@@ -599,6 +747,11 @@ dtc.connect()
   let newStkDrive  = oldStkDrive;
   let drivePath = utilities.getPropertyValue(customProps, "NETWORK", "stkDrivePath", null);
   if (drivePath !== null) {
+    let si = drivePath.indexOf("/");
+    if (si >= 0) {
+      newStkPort = parseInt(drivePath.substring(0, si));
+      drivePath = drivePath.substring(si + 1);
+    }
     let match = drivePath.match(/^M([0-7]+)P([0-7]+)D([0-7]+)$/i);
     if (match !== null) {
       newStkModule = parseInt(match[1], 8);
@@ -609,7 +762,7 @@ dtc.connect()
   const isPathChange = newStkModule !== oldStkModule
     || newStkPanel !== oldStkPanel
     || newStkDrive !== oldStkDrive;
-  if (newStkHost !== oldStkHost || isPathChange) {
+  if (newStkHost !== oldStkHost || newStkPort !== oldStkPort || isPathChange) {
     //
     // Create/update [equipment.nos287] section to define MT5744 entries
     //
@@ -622,7 +775,7 @@ dtc.connect()
       }
     }
     for (let i = 0; i < 4; i++) {
-      ovlText.push(`MT5744,0,${i},23,${newStkHost}:4400/M${newStkModule.toString(8)}P${newStkPanel.toString(8)}D${(newStkDrive + i).toString(8)}`);
+      ovlText.push(`MT5744,0,${i},23,${newStkHost}:${newStkPort}/M${newStkModule.toString(8)}P${newStkPanel.toString(8)}D${(newStkDrive + i).toString(8)}`);
     }
     ovlProps["equipment.nos287"] = ovlText;
   }
@@ -631,10 +784,10 @@ dtc.connect()
     // Update equipment deck
     //
     return dtc.say("Update automated cartridge tape equipment definition in EQPD01 ...")
-    .then(() => dtc.utilities.getSystemRecord(dtc, "EQPD01"))
+    .then(() => utilities.getSystemRecord(dtc, "EQPD01"))
     .then(eqpd01 => {
       eqpd01 = eqpd01.replace(/EQ060=AT-4,UN=0,CH=23,LS=[0-7]+,PA=[0-7]+,DR=[0-7]+\./,
-        `EQ060=AT-4,UN=0,CH=23,LS=${newStkModule.toString(8)},PA=${newStkPanel.toString(8)},DR=${(newStkDrive + i).toString(8)}.`);
+        `EQ060=AT-4,UN=0,CH=23,LS=${newStkModule.toString(8)},PA=${newStkPanel.toString(8)},DR=${(newStkDrive).toString(8)}.`);
       const job = [
         "$COPY,INPUT,EQPD01.",
         "$REWIND,EQPD01.",
@@ -643,6 +796,8 @@ dtc.connect()
       ];
       const options = {
         jobname: "UPDEQPD",
+        username: "INSTALL",
+        password: utilities.getPropertyValue(customProps, "PASSWORDS", "INSTALL", "INSTALL"),
         data: eqpd01
       };
       return dtc.createJobWithOutput(12, 4, job, options);
@@ -689,10 +844,43 @@ dtc.connect()
   }
 })
 .then(() => dtc.say("Deadstart using the new tape ..."))
+.then(() => {
+  if (oldMID !== newMID && newMID !== null) {
+    return dtc.start(["manual"], {
+      detached: true,
+      stdio:    [0, "ignore", 2],
+      unref:    false
+    })
+    .then(() => dtc.sleep(5000))
+    .then(() => dtc.connect(newIpAddress))
+    .then(() => dtc.expect([{ re: /Operator> $/ }]))
+    .then(() => dtc.attachPrinter("LP5xx_C12_E5"))
+    .then(() => dtc.console("idle off"))
+    .then(() => dtc.dsd([
+      "O!",
+      "#1000#P!",
+      "#1000#D=YES",
+      "#1000#",
+      "#5000#NEXT.",
+      "#1000#]!",
+      "#1000#INITIALIZE,AL,6.",
+      "#1000#GO.",
+      "#7500#%year%%mon%%day%",
+      "#3000#%hour%%min%%sec%"
+    ]))
+    .then(() => dtc.expect([{ re: /QUEUE FILE UTILITY COMPLETE/ }], "printer"))
+    .then(() => dtc.say("Shutdown the system and deadstart again with helpers activated ..."))
+    .then(() => dtc.shutdown(false))
+    .then(() => dtc.sleep(5000));
+  }
+  else {
+    return Promise.resolve();
+  }
+})
 .then(() => dtc.start({
-    detached: true,
-    stdio:    [0, "ignore", 2],
-    unref:    false
+  detached: true,
+  stdio:    [0, "ignore", 2],
+  unref:    false
 }))
 .then(() => dtc.sleep(5000))
 .then(() => dtc.connect(newIpAddress))
@@ -701,6 +889,7 @@ dtc.connect()
 .then(() => dtc.expect([{ re: /QUEUE FILE UTILITY COMPLETE/ }], "printer"))
 .then(() => dtc.say("Deadstart complete"))
 .then(() => dtc.say("Reconfiguration complete"))
+.then(() => dtc.console("idle on"))
 .then(() => {
   process.exit(0);
 })

@@ -1,0 +1,135 @@
+<html>
+  <head>
+    <title>CYBER Console</title>
+    <link rel="icon" type="image/png" href="images/ncc.png">
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/node_modules/babylonjs/babylon.js"></script>
+    <script src="js/node_modules/babylonjs-materials/babylonjs.materials.min.js"></script>
+    <script src="js/node_modules/babylonjs-procedural-textures/babylonjs.proceduralTextures.min.js"></script>
+    <script src="js/node_modules/babylonjs-loaders/babylonjs.loaders.js"></script>
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/console-base.js"></script>
+    <script src="js/console.js"></script>
+    <script src="js/machine-comm.js"></script>
+  </head>
+  <body class="fanfold-background">
+    <div id="content-container" class="content-container">
+      <div id="title" class="title"></div>
+      <div id="console-container" class="content-container top left-floater right-padded zindex-1"></div>
+    </div>
+    <script>
+    const CC545 = 0;
+    const DD60A = 1;
+    const DD60B = 2;
+    $(document).ready(() => {
+      let consoleType     = CC545;
+      let machineId       = "unknown";
+      let refreshInterval = 20;
+      let title           = "CYBER Console 3D";
+      let qs = window.location.search;
+      if (qs && qs.length > 1) {
+        qs.substr(1).split("&").forEach(param => {
+          let nvp = param.split("=");
+          if (nvp.length > 1) {
+            switch (nvp[0]) {
+            case "c": // console type
+              switch (nvp[1].toUpperCase()) {
+              case "CC545":
+                consoleType = CC545;
+                break;
+              case "DD60A":
+                consoleType = DD60A;
+                break;
+              case "DD60B":
+                consoleType = DD60B;
+                break;
+              }
+              break;
+            case "m": // machine name
+              machineId = nvp[1];
+              break;
+            case "r": // refresh interval (1/100 seconds)
+              refreshInterval = parseInt(nvp[1]);
+              break;
+            case "t": // title
+              title = decodeURIComponent(nvp[1]);
+              break;
+            }
+          }
+        });
+      }
+      $("title").html(title);
+      $("#title").html(title);
+      const consoleContainer = $("#console-container");
+      const contentContainer = document.getElementById("content-container");
+      const titleContainer   = document.getElementById("title");
+      const setContentWidth = () => {
+        const width = cyberConsole.getWidth();
+        let offset = Math.round((window.innerWidth - width) / 2);
+        contentContainer.style.width = `${width}px`;
+        contentContainer.style.left  = `${offset}px`;
+      };
+      window.onresize = () => {
+        setContentWidth();
+      };
+
+      const cyberConsole = new CyberConsole3D(BABYLON);
+      cyberConsole.setConsoleType(consoleType);
+      cyberConsole.createScreen();
+
+      consoleContainer.empty();
+
+      const canvas = cyberConsole.getCanvas();
+      consoleContainer.append(canvas);
+      setContentWidth();
+      canvas.focus();
+        
+      const machine = new Machine(machineId);
+      machine.setTerminal(cyberConsole);
+      machine.setReceivedDataHandler(data => {
+        cyberConsole.renderText(data);
+      });
+      machine.setConnectListener(() => {
+        machine.send(new Uint8Array([0x80, refreshInterval, 0x81]));
+      });
+      let url = machine.createConnection();
+      const uplineDataSender = data => {
+        machine.send(data);
+      };
+      cyberConsole.setUplineDataSender(uplineDataSender);
+
+      machine.setDisconnectListener(() => {
+        console.log('Disconnect.');
+        cyberConsole.displayNotification(1, 128, 128, `Disconnected from ${title}.\n\n   Press any key to reconnect ...`);
+        cyberConsole.setUplineDataSender(data => {
+          cyberConsole.reset();
+          url = machine.createConnection();
+          cyberConsole.setUplineDataSender(uplineDataSender);
+        });
+      });
+
+      $(document).ajaxError((event, jqxhr, settings, thrownError) => {
+        console.log('Ajax error.');
+        if (settings.url === url) {
+          cyberConsole.displayNotification(1, 128, 128, `${jqxhr.responseText}\n\n   Failed to connect to ${title}\n\n   Press any key to try again ...`);
+          cyberConsole.setUplineDataSender(data => {
+            cyberConsole.reset();
+            url = machine.createConnection();
+            cyberConsole.setUplineDataSender(uplineDataSender);
+          });
+        }
+      });
+        
+      $(window).bind("beforeunload", () => {
+        machine.closeConnection();
+      });
+
+      // Resize
+      window.addEventListener("resize", function () {
+        cyberConsole.getEngine().resize();
+      });
+
+    }); // document ready.
+    </script>
+  </body>
+</html>

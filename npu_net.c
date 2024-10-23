@@ -44,6 +44,7 @@
 #include "types.h"
 #include "proto.h"
 #include "npu.h"
+#include "cci.h"
 #include <sys/types.h>
 #include <memory.h>
 #include <time.h>
@@ -128,7 +129,6 @@ static char *connStates[]     =
     "idle",          // StConnInit
     "connecting",    // StConnConnecting
     "connected",     // StConnConnected
-    "disconnecting", // StConnDisconnecting
     "busy"           // StConnBusy
     };
 static char *connTypes[]      =
@@ -148,6 +148,7 @@ static char *connTypes[]      =
 static char networkDownMsg[]  = "\r\nNetwork going down - connection aborted\r\n";
 static char notReadyMsg[]     = "\r\nHost not ready to accept connections - please try again later.\r\n";
 static char noPortsAvailMsg[] = "\r\nNo free ports available - please try again later.\r\n";
+static char tcbNotConfiguredMsg[] = "\r\nCould not configure tcb - please try again later.\r\n";
 
 static Pcb  pcbs[MaxClaPorts];
 static bool isPcbsPreset = FALSE;
@@ -262,6 +263,16 @@ static void (*tryOutput[])(Pcb *pcbp) =
     npuNjeTryOutput,    // ConnTypeNje
     npuLipTryOutput     // ConnTypeTrunk
     };
+
+/*
+** Function tables to interface to either CCP or CCI functions
+*/
+static bool (*svmIsReady[])() =
+    {
+    npuSvmIsReady,
+    cciSvmIsReady
+    };
+
 
 /*
  **--------------------------------------------------------------------------
@@ -657,9 +668,19 @@ void npuNetCheckStatus(void)
     while (pollIndex <= npuNetMaxClaPort)
         {
         pcbp = &pcbs[pollIndex++];
-        if (pcbp->connFd <= 0
-            || (pcbp->ncbp != NULL && pcbp->ncbp->state == StConnDisconnecting))
+        if (pcbp->connFd <= 0)
             {
+            continue;
+            }
+        if (pcbp->cciWaitForTcb)
+            {
+            if (getSeconds() - pcbp->cciTcbWaitStart > CciWaitForTcbTimeout) 
+                {
+                npuNetSendConsoleMsg(pcbp->connFd, pcbp->ncbp->connType, tcbNotConfiguredMsg);
+                netCloseConnection(pcbp->connFd);
+                pcbp->connFd = 0;
+                pcbp->ncbp->state = StConnInit;
+                }
             continue;
             }
 
@@ -745,6 +766,12 @@ void npuNetShowStatus()
         if (dp != NULL)
             {
             dts = "2550   ";
+            break;
+            }
+        dp = channelFindDevice(channelNo, DtHcp);
+        if (dp != NULL)
+            {
+            dts = "HCP    ";
             break;
             }
         }
@@ -929,20 +956,17 @@ static void npuNetSendConsoleMsg(int connFd, int connType, char *msg)
 **------------------------------------------------------------------------*/
 static int npuNetAcceptConnections(fd_set *selectFds, int maxFd)
     {
+#if defined(_WIN32)
+    SOCKET             acceptFd;
+#else
     int                acceptFd;
+#endif
     fd_set             acceptFds;
-    struct sockaddr_in from;
     int                i;
     int                n;
     Ncb                *ncbp;
     int                rc;
     struct timeval     timeout;
-
-#if defined(_WIN32)
-    int fromLen;
-#else
-    socklen_t fromLen;
-#endif
 
     timeout.tv_sec  = 1;
     timeout.tv_usec = 0;
@@ -952,7 +976,7 @@ static int npuNetAcceptConnections(fd_set *selectFds, int maxFd)
     rc = select(maxFd + 1, &acceptFds, NULL, NULL, &timeout);
     if (rc < 0)
         {
-        fprintf(stderr, "NET: select returned unexpected %d\n", rc);
+        fprintf(stderr, "(npu_net) select returned unexpected %d\n", rc);
         sleepMsec(1000);
         }
     else if (rc < 1)
@@ -978,13 +1002,12 @@ static int npuNetAcceptConnections(fd_set *selectFds, int maxFd)
         case ConnTypeTrunk:
             if ((ncbp->lstnFd > 0) && FD_ISSET(ncbp->lstnFd, &acceptFds))
                 {
-                fromLen  = sizeof(from);
-                acceptFd = accept(ncbp->lstnFd, (struct sockaddr *)&from, &fromLen);
-                if (acceptFd < 0)
-                    {
-                    fputs("(npu_net) spurious connection attempt\n", stderr);
-                    }
-                else if (npuNetProcessNewConnection(acceptFd, ncbp, TRUE))
+                acceptFd = netAcceptConnection(ncbp->lstnFd);
+#if defined(_WIN32)
+                if (acceptFd != INVALID_SOCKET && npuNetProcessNewConnection(acceptFd, ncbp, TRUE))
+#else
+                if (acceptFd >= 0 && npuNetProcessNewConnection(acceptFd, ncbp, TRUE))
+#endif
                     {
                     n += 1;
                     }
@@ -1029,7 +1052,7 @@ static int npuNetCreateConnections(void)
     /*
     **  Attempt to create connections only when NAM is ready.
     */
-    if (!npuSvmIsReady())
+    if (!svmIsReady[npuSw]())
         {
         return 0;
         }
@@ -1377,7 +1400,7 @@ static bool npuNetProcessNewConnection(int connFd, Ncb *ncbp, bool isPassive)
     /*
     **  Check if the host is ready to accept connections.
     */
-    if (!npuSvmIsReady())
+    if (!svmIsReady[npuSw]())
         {
         /*
         **  Tell the user.
@@ -1400,7 +1423,7 @@ static bool npuNetProcessNewConnection(int connFd, Ncb *ncbp, bool isPassive)
     limit = ncbp->claPort + ncbp->numPorts;
     for (i = ncbp->claPort; i < limit; i++)
         {
-        if (pcbs[i].connFd < 1)
+        if (pcbs[i].connFd < 1 && (! pcbs[i].cciIsDisabled))
             {
             pcbp = &pcbs[i];
             break;
@@ -1454,6 +1477,10 @@ static bool npuNetProcessNewConnection(int connFd, Ncb *ncbp, bool isPassive)
     **  Initialize the connection and mark it as active.
     */
     pcbp->connFd = connFd;
+    if (pcbp->cciWaitForTcb)
+        {
+        pcbp->cciTcbWaitStart = getSeconds();
+        }
     if (notifyNetConnect[ncbp->connType](pcbp, isPassive))
         {
         npuNetSendConsoleMsg(connFd, ncbp->connType, connectingMsg);

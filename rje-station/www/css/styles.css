@@ -47,8 +47,18 @@
   padding-top: 5px;
   width: 100%;
 }
+.command-help-content {
+  background: cornsilk;
+  margin: 0px;
+  padding: 0px;
+}
+.command-help-table {
+  background: cornsilk;
+  margin: 0px;
+  padding: 0px;
+}
 .command-input {
-  width: 600px;
+  width: 580px;
 }
 .command-input-container {
 }
@@ -56,6 +66,14 @@
   display: inline-block;
   margin-left: 5px;
   width: 80px;
+}
+.composer-table {
+  background: cornsilk;
+  margin: 0px;
+  padding: 0px;
+}
+.composer-table tr td {
+  top: 0px;
 }
 .composer-text {
   display: block;
@@ -106,6 +124,10 @@
 }
 .left-floater {
   float: left;
+}
+.machine-table, th, td {
+  padding: 2px 5px 2px 5px;
+  text-align: left;
 }
 .printer-background {
   background-image: url("fanfold-716x528.jpg");

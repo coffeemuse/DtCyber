@@ -133,6 +133,7 @@ ModelFeatures features;
 ModelType     modelType;
 char          persistDir[256];
 char          displayName[32];
+NpuSoftware   npuSw = SwUndefined;
 
 /*
 **  -----------------
@@ -206,28 +207,28 @@ static InitVal sectVals[] =
     "cpus",                          "cyber", "Valid",
     "deadstart",                     "cyber", "Valid",
     "displayName",                   "cyber", "Valid",
-    "ecsbanks",                      "cyber", "Valid",
+    "ecsBanks",                      "cyber", "Valid",
     "ecsFile",                       "cyber", "Deprecated",
     "equipment",                     "cyber", "Valid",
-    "esmbanks",                      "cyber", "Valid",
+    "esmBanks",                      "cyber", "Valid",
     "helpers",                       "cyber", "Valid",
     "idle",                          "cyber", "Valid",
-    "idlecycles",                    "cyber", "Valid",
-    "idletime",                      "cyber", "Valid",
+    "idleCycles",                    "cyber", "Valid",
+    "idleTime",                      "cyber", "Valid",
     "ipAddress",                     "cyber", "Valid",
     "memory",                        "cyber", "Valid",
     "model",                         "cyber", "Valid",
     "networkInterface",              "cyber", "Valid",
     "npuConnections",                "cyber", "Valid",
     "operator",                      "cyber", "Valid",
-    "ostype",                        "cyber", "Valid",
+    "osType",                        "cyber", "Valid",
     "persistDir",                    "cyber", "Valid",
-    "platoconns",                    "cyber", "Deprecated",
-    "platoport",                     "cyber", "Deprecated",
+    "platoConns",                    "cyber", "Deprecated",
+    "platoPort",                     "cyber", "Deprecated",
     "pps",                           "cyber", "Valid",
     "setMhz",                        "cyber", "Valid",
-    "telnetconns",                   "cyber", "Deprecated",
-    "telnetport",                    "cyber", "Deprecated",
+    "telnetConns",                   "cyber", "Deprecated",
+    "telnetPort",                    "cyber", "Deprecated",
     "trace",                         "cyber", "Valid",
 
     "cdcnetNode",                    "npu",   "Valid",
@@ -236,6 +237,7 @@ static InitVal sectVals[] =
     "couplerNode",                   "npu",   "Valid",
     "hostID",                        "npu",   "Valid",
     "hostIP",                        "npu",   "Deprecated",
+    "idleNetBufs",                   "npu",   "Valid",
     "npuNode",                       "npu",   "Valid",
     "terminals",                     "npu",   "Valid",
 
@@ -686,8 +688,26 @@ static void initCyber(char *config)
     case 16:
         break;
 
+    case 32:
+    case 64:
+    case 128:
+        if (modelType != ModelCyber865)
+            {
+            fprintf(stderr, "(init   ) WARNING - file '%s' section [%s]: Entry 'esmbanks' - only CPU models CYBER865 and CYBER875 can fully access more than 16 banks of ESM\n",
+                startupFile, config);
+            }
+        break;
+
     default:
-        fprintf(stderr, "(init   ) file '%s' section [%s]: Entry 'esmbanks' invalid - correct values are 0, 1, 2, 4, 8 or 16\n", startupFile, config);
+        if (modelType == ModelCyber865)
+            {
+            fprintf(stderr, "(init   ) file '%s' section [%s]: Entry 'esmbanks' invalid - correct values are 0, 1, 2, 4, 8, 16, 32, 64 or 128\n",
+                startupFile, config);
+            }
+        else
+            {
+            fprintf(stderr, "(init   ) file '%s' section [%s]: Entry 'esmbanks' invalid - correct values are 0, 1, 2, 4, 8 or 16\n", startupFile, config);
+            }
         exit(1);
         }
 
@@ -904,11 +924,11 @@ static void initCyber(char *config)
         rc = runHelper(cmd);
         if (rc == 0)
             {
-            fprintf(stdout, "(init   ) Started helper:      %s %s %s\n", networkInterfaceMgr, networkInterface, ipAddress);
+            fprintf(stdout, "(helper ) Started: %s %s %s\n", networkInterfaceMgr, networkInterface, ipAddress);
             }
         else
             {
-            fprintf(stderr, "(init   ) Failed to start %s, rc=%d'\n", networkInterfaceMgr, rc);
+            fprintf(stderr, "(helper ) Failed to start \"%s\", rc=%d'\n", networkInterfaceMgr, rc);
             exit(1);
             }
         }
@@ -961,7 +981,16 @@ static void initCyber(char *config)
     initGetInteger("idletime", 60, &dummyInt);
     idleTime = (u32)dummyInt;
 #endif
-    fprintf(stdout, "(init   ) Idle %s every %d cycles for %d microseconds.\n", idle ? "on" : "off", idleTrigger, idleTime);
+     
+    if (idle)
+        {
+        fprintf(stdout, "(init   ) Idle every %d cycles for %d microseconds.\n",
+            idleTrigger, idleTime);
+        }
+    else
+        {
+        fputs("(init   ) Idle off.\n", stdout);
+        }
 
     /*
     **  Get optional operating system type. If not specified, use "none".
@@ -1142,7 +1171,7 @@ static void initNpuConnections(void)
     **  Get optional coupler node number. If not specified, use default value of 1.
     */
     initGetInteger("couplerNode", 1, &val);
-    if ((val < 1) || (val > 255))
+    if ((val < 0) || (val > 255))
         {
         fprintf(stderr, "(init   ) file '%s' section [%s]: Invalid 'couplerNode' value %ld - correct values are 1..255\n",
                 startupFile, npuConnections, val);
@@ -1200,6 +1229,14 @@ static void initNpuConnections(void)
         }
     cdcnetPrivilegedUdpPortOffset = (u16)val;
     fprintf(stderr, "(init   ) UDP privileged port offset is %d\n", cdcnetPrivilegedUdpPortOffset);
+
+    /*
+    **  Get optional threshold value of network buffer backlog indicating that the NPU/MDI
+    **  is busy.
+    */
+    initGetInteger("idleNetBufs", 4, &val);
+    idleNetBufs = (u32)val;
+    fprintf(stderr, "(init   ) Idle network buffer threshold is %d\n", idleNetBufs);
 
     /*
     **  Process all equipment entries.

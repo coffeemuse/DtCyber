@@ -91,15 +91,14 @@ static volatile bool   displayActive = FALSE;
 static u8              currentFont;
 static i16             currentX;
 static i16             currentY;
-static u16             oldCurrentY;
 static DispList        display[ListSize];
+static pthread_t       displayThread;
 static u32             listEnd;
 static Font            hSmallFont;
 static Font            hMediumFont;
 static Font            hLargeFont;
 static int             width;
 static int             height;
-static bool            refresh = FALSE;
 static pthread_mutex_t mutexDisplay;
 static Display         *disp;
 static Window          window;
@@ -127,7 +126,6 @@ static u8              clipToKeyboardDelay  = 0;
 void windowInit(void)
     {
     int            rc;
-    pthread_t      thread;
     pthread_attr_t attr;
 
     /*
@@ -144,7 +142,8 @@ void windowInit(void)
     **  Create POSIX thread with default attributes.
     */
     pthread_attr_init(&attr);
-    rc = pthread_create(&thread, &attr, windowThread, NULL);
+    rc = pthread_create(&displayThread, &attr, windowThread, NULL);
+    displayActive = TRUE;
     }
 
 /*--------------------------------------------------------------------------
@@ -188,12 +187,6 @@ void windowSetX(u16 x)
 void windowSetY(u16 y)
     {
     currentY = 0777 - y;
-    if (oldCurrentY > currentY)
-        {
-        refresh = TRUE;
-        }
-
-    oldCurrentY = currentY;
     }
 
 /*--------------------------------------------------------------------------
@@ -239,31 +232,6 @@ void windowQueue(u8 ch)
     }
 
 /*--------------------------------------------------------------------------
-**  Purpose:        Update window.
-**
-**  Parameters:     Name        Description.
-**
-**  Returns:        Nothing.
-**
-**------------------------------------------------------------------------*/
-void windowUpdate(void)
-    {
-    refresh = TRUE;
-    }
-
-/*--------------------------------------------------------------------------
-**  Purpose:        Poll the keyboard (dummy for X11)
-**
-**  Parameters:     Name        Description.
-**
-**  Returns:        Nothing
-**
-**------------------------------------------------------------------------*/
-void windowGetChar(void)
-    {
-    }
-
-/*--------------------------------------------------------------------------
 **  Purpose:        Terminate console window.
 **
 **  Parameters:     Name        Description.
@@ -273,10 +241,11 @@ void windowGetChar(void)
 **------------------------------------------------------------------------*/
 void windowTerminate(void)
     {
-    printf("Shutting down window thread\n");
-    displayActive = FALSE;
-    sleep(1);
-    printf("Shutting down main thread\n");
+    if (displayActive)
+        {
+        displayActive = FALSE;
+        pthread_join(displayThread, NULL);
+        }
     }
 
 /*
@@ -425,8 +394,8 @@ void *windowThread(void *param)
     /*
     **  Window thread loop.
     */
-    displayActive = TRUE;
-    isMeta        = FALSE;
+    isMeta = FALSE;
+
     while (displayActive)
         {
         /*
@@ -499,7 +468,6 @@ void *windowThread(void *param)
 
             case MappingNotify:
                 XRefreshKeyboardMapping((XMappingEvent *)&event);
-                refresh = TRUE;
                 break;
 
             case ConfigureNotify:
@@ -515,7 +483,6 @@ void *windowThread(void *param)
                     }
 
                 XFillRectangle(disp, pixmap, gc, 0, 0, width, height);
-                refresh = TRUE;
                 break;
 
             case KeyPress:
@@ -641,9 +608,6 @@ void *windowThread(void *param)
                 }
             }
 
-        /*
-        **  Process any refresh request.
-        */
         XSetForeground(disp, gc, fg);
 
         XSetFont(disp, gc, hSmallFont);
@@ -696,6 +660,16 @@ void *windowThread(void *param)
             **  Display pause message.
             */
             static char opMessage[] = "Emulation paused";
+            XSetFont(disp, gc, hLargeFont);
+            oldFont = FontLarge;
+            XDrawString(disp, pixmap, gc, 20, 256, opMessage, strlen(opMessage));
+            }
+        else if (consoleIsRemoteActive())
+            {
+            /*
+            **  Display indication that rmeote console is active.
+            */
+            static char opMessage[] = "Remote console active";
             XSetFont(disp, gc, hLargeFont);
             oldFont = FontLarge;
             XDrawString(disp, pixmap, gc, 20, 256, opMessage, strlen(opMessage));
@@ -769,7 +743,6 @@ void *windowThread(void *param)
         listEnd  = 0;
         currentX = -1;
         currentY = -1;
-        refresh  = FALSE;
 
         /*
         **  Release display list.
@@ -803,6 +776,7 @@ void *windowThread(void *param)
     XFreePixmap(disp, pixmap);
     XDestroyWindow(disp, window);
     XCloseDisplay(disp);
+    pthread_mutex_destroy(&mutexDisplay);
     pthread_exit(NULL);
     }
 

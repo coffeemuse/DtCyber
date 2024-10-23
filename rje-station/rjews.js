@@ -68,7 +68,7 @@ const generateDefaultResponse = (req, res) => {
   res.write(  "</head>");
   res.write(  "<body>");
   res.write(    "<h1>Available RJE Services</h1>");
-  res.write(    '<ul id="machines" class="machine-list"></ul>');
+  res.write(    '<ul id="machines" class="machine-list">');
 
   for (const key of Object.keys(machineMap)) {
     let machine = machineMap[key];
@@ -151,6 +151,7 @@ const processMachinesRequest = (req, res, query) => {
       connection.service.on("connect", () => {
         log(`Connected to ${machine.protocol} service on ${connection.machineName} at ${machine.host}:${machine.port}`);
         connection.isConnected = true;
+        machine.curConnections += 1;
         connection.lastAction = Date.now();
         res.writeHead(200, {"Content-Type":"text/plain"});
         res.end(connection.id.toString());
@@ -203,12 +204,20 @@ const processMachinesRequest = (req, res, query) => {
           connection.ws.close();
           delete connection.ws;
         }
-        else if (connection.isConnected === false) {
-          res.writeHead(500, {"Content-Type":"text/plain"});
-          res.end(err.toString());
-          logHttpRequest(req, 500);
+        else if (connection.isConnected) {
+          connection.isConnected = false;
+          machine.curConnections -= 1;
         }
-        connection.isConnected = false;
+        else {
+          try {
+            res.writeHead(500, {"Content-Type":"text/plain"});
+            res.end(err.toString());
+            logHttpRequest(req, 500);
+          }
+          catch (err) {
+            log(`Warning on connection ${connection.id} : ${err}`);
+          }
+        }
       });
 
       connection.service.on("pti", (streamType, streamId) => {
@@ -235,6 +244,10 @@ const processMachinesRequest = (req, res, query) => {
       res.end();
       logHttpRequest(req, 404);
     }
+  }
+  else if (Object.keys(query).length < 1) {
+    res.writeHead(200, {"Content-Type":"application/json"});
+    res.end(JSON.stringify(machineMap));
   }
   else {
     res.writeHead(400);
@@ -384,6 +397,8 @@ const readConfigFile = path => {
             machine[propName] = readConfigProperty(path, tokens[1], tokens[2], tokens[3]);
           }
         }
+        if (typeof machine.maxConnections === "undefined") machine.maxConnections = 1;
+        machine.curConnections = 0;
       }
     }
     else if (typeof value === "string" && value.startsWith("%")) {
@@ -575,9 +590,12 @@ wsServer.on("request", req => {
         });
         ws.on("close", (reason, description) => {
           logWsRequest(`${req.remoteAddress} close /connections/${id} (${connection.machineName})`);
-          connection.isConnected = false;
           connection.service.end();
           delete connection.ws;
+          if (connection.isConnected) {
+            connection.isConnected = false;
+            machineMap[connection.machineName].curConnections -= 1;
+          }
         });
       }
       else {
@@ -617,6 +635,7 @@ setInterval(() => {
       }
       if (typeof connection.service !== "undefined") connection.service.end();
       connection.isConnected = false;
+      machineMap[connection.machineName].curConnections -= 1;
     }
   }
 }, 10000);

@@ -75,8 +75,6 @@
 **  Private Function Prototypes
 **  ---------------------------
 */
-static void startHelpers(void);
-static void stopHelpers(void);
 static void tracePpuCalls(void);
 static void waitTerminationMessage(void);
 
@@ -94,6 +92,7 @@ u32  cycles;
 u32  readerScanSecs = 3;
 
 bool idle = FALSE;   /* Idle loop detection */
+u32  idleNetBufs;    /* threshold of network buffers in use indicating network is busy */
 u32  idleTrigger;    /* sleep every <idletrigger> cycles of the idle loop */
 u32  idleTime;       /* microseconds to sleep when idle */
 char ipAddress[16];
@@ -270,6 +269,7 @@ int main(int argc, char **argv)
         /*
         **  Execute PP, CPU and RTC.
         */
+        rtcTick();
         ppStep();
 
         cpuStep(cpus);
@@ -278,7 +278,6 @@ int main(int argc, char **argv)
         cpuStep(cpus);
 
         channelStep();
-        rtcTick();
 
         idleThrottle(cpus);
 
@@ -342,7 +341,7 @@ void idleThrottle(CpuContext *ctx)
                 {
                 if (ctx->id == 0)
                     {
-                    if (idleCheckBusy())
+                    if (idleCheckBusy() || npuBipIsBusy() || rtcClockIsCurrent == FALSE)
                         {
                         return;
                         }
@@ -358,7 +357,7 @@ void idleThrottle(CpuContext *ctx)
 **
 **  Parameters:     None.
 **
-**  Returns:        TRUE for busy FALSE for not busy.
+**  Returns:        TRUE for busy, FALSE for not busy.
 **
 **------------------------------------------------------------------------*/
 bool idleCheckBusy()
@@ -541,7 +540,7 @@ int runHelper(char *command)
 **  Returns:        Nothing.
 **
 **------------------------------------------------------------------------*/
-static void startHelpers(void)
+void startHelpers(void)
     {
     char command[200];
     char *line;
@@ -559,11 +558,11 @@ static void startHelpers(void)
         rc = runHelper(command);
         if (rc == 0)
             {
-            printf("(main   ) Started helper: %s\n", line);
+            printf("(helper ) Started: %s\n", line);
             }
         else
             {
-            printf("(main   ) Failed to start helper \"%s\", rc = %d\n", line, rc);
+            printf("(helper ) Failed to start \"%s\", rc = %d\n", line, rc);
             }
         }
     }
@@ -576,7 +575,7 @@ static void startHelpers(void)
 **  Returns:        Nothing.
 **
 **------------------------------------------------------------------------*/
-static void stopHelpers(void)
+void stopHelpers(void)
     {
     char command[200];
     char *line;
@@ -591,11 +590,11 @@ static void stopHelpers(void)
             rc = runHelper(command);
             if (rc == 0)
                 {
-                printf("\n(main) Stopped helper: %s\n", line);
+                printf("\n(helper ) Stopped: %s\n", line);
                 }
             else
                 {
-                printf("\n(main) Failed to stop helper \"%s\", rc = %d\n", line, rc);
+                printf("\n(helper ) Failed to stop \"%s\", rc = %d\n", line, rc);
                 }
             }
         }
@@ -605,11 +604,11 @@ static void stopHelpers(void)
         rc = runHelper(command);
         if (rc == 0)
             {
-            printf("\n(main) Stopped helper: %s\n", networkInterfaceMgr);
+            printf("\n(helper ) Stopped: %s\n", networkInterfaceMgr);
             }
         else
             {
-            printf("\n(main) Failed to stop helper \"%s\", rc = %d\n", networkInterfaceMgr, rc);
+            printf("\n(helper ) Failed to stop \"%s\", rc = %d\n", networkInterfaceMgr, rc);
             }
         }
     fflush(stdout);
